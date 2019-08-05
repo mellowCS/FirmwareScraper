@@ -21,9 +21,9 @@ class AvmSpider(scrapy.Spider):
             yield scrapy.Request(url=product_url, callback=self.parse_product)
 
     def parse_product(self, response):
-        if response.request.url.split('/')[-2] in ['fritz.os', 'recover']:
-            product = self.Product(name=response.request.url.split('/')[-4], country=response.request.url.split('/')[-3], type=response.request.url.split('/')[-2],
-                                   urls=[response.urljoin(p) for p in response.xpath('//a/@href').extract() if not p.startswith('..')])
+        path = response.request.url.split('/')
+        if path[-2] in ['fritz.os', 'recover']:
+            product = self.Product(name=path[-4], country=path[-3], type=path[-2], urls=[response.urljoin(p) for p in response.xpath('//a/@href').extract() if not p.startswith('..')])
             yield None
         else:
             for sub in [response.urljoin(p) for p in response.xpath('//a/@href').extract() if not p.startswith('..')]:
