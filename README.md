@@ -42,11 +42,43 @@ scrapy crawl *name of spider*
 
 ## Developer
 
-All developed spiders should be contained in the folder
+All developed spiders and corresponding tests should be contained in the folders
 
 ```
 .../FirmwareScraper/firmware/spiders/
+.../FirmwareScraper/firmware/tests/
 ```
+
+### File Download
+
+For the file download, scrapy's file pipline is activated in settings.py. To store the files, a valid path has to be added
+
+```
+ITEM_PIPELINES = {
+    'scrapy.pipelines.files.FilesPipeline': 1
+}
+
+FILES_STORE = 'valid/path/to/files/'
+```
+
+Additionally, the necessary fields are added to the FirmwareItem class in the items.py
+
+```
+class FirmwareItem(scrapy.Item):
+    file_urls = scrapy.Field()
+    files = scrapy.Field()
+```
+
+To add files to the pipeline use the following commands in the spider class
+
+```
+for url in ...:
+    loader = ItemLoader(item=FirmwareItem(), selector=url)
+    loader.add_value('file_urls', url)
+    yield loader.load_item()
+```
+
+The scrapy script will then automatically download all the files in the pipeline
 
 ### Naming Convention
 
