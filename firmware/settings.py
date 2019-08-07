@@ -64,9 +64,11 @@ ROBOTSTXT_OBEY = True
 
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
-#ITEM_PIPELINES = {
-#    'firmware.pipelines.FirmwarePipeline': 300,
-#}
+ITEM_PIPELINES = {
+    'scrapy.pipelines.files.FilesPipeline': 1
+}
+
+FILES_STORE = 'firmware_files/'
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html
