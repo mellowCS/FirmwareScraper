@@ -65,7 +65,7 @@ ROBOTSTXT_OBEY = True
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-    'scrapy.pipelines.files.FilesPipeline': 1
+    'firmware.pipelines.AvmPipeline': 1
 }
 
 FILES_STORE = 'firmware_files/'
