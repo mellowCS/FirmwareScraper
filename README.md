@@ -78,7 +78,15 @@ for url in ...:
     yield loader.load_item()
 ```
 
-The scrapy script will then automatically download all the files in the pipeline
+The scrapy script will then automatically download all the files in the pipeline.
+
+To automatically create a json file while downloading the corresponding files, the spider has to be run with the following command
+
+```
+scrapy crawl *name of spider* -o file_name.json
+```
+
+The json file gets populated with the values added to the Field() variables of the Item class specified in the ItemLoader. See the pipeline example above.
 
 ### Naming Convention
 
