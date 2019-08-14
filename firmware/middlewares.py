@@ -71,6 +71,7 @@ class FirmwareDownloaderMiddleware(object):
     # passed objects.
 
     def __init__(self, driver_executable_path=None):
+        # init Firefox, maybe other Webdriver later
         options = webdriver.FirefoxOptions()
         options.headless = True
         log = Log()
