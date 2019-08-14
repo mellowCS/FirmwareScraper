@@ -6,6 +6,15 @@
 # https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
 from scrapy import signals
+from scrapy.http import HtmlResponse
+from scrapy.exceptions import IgnoreRequest
+
+from selenium import webdriver
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.firefox.options import Log
 
 
 class FirmwareSpiderMiddleware(object):
@@ -61,24 +70,61 @@ class FirmwareDownloaderMiddleware(object):
     # scrapy acts as if the downloader middleware does not modify the
     # passed objects.
 
+    def __init__(self, driver_executable_path=None):
+        options = webdriver.FirefoxOptions()
+        options.headless = True
+        log = Log()
+        log.level = "TRACE"
+        options.add_argument(log.level)
+        if driver_executable_path == None:
+            print('Selenium driver path not set correctly')
+            self.driver = None
+        else:
+            self.driver = webdriver.Firefox(
+                options=options,
+                executable_path=driver_executable_path
+            )
+
     @classmethod
     def from_crawler(cls, crawler):
         # This method is used by Scrapy to create your spiders.
-        s = cls()
+        driver_executable_path = crawler.settings.get('SELENIUM_DRIVER_EXECUTABLE_PATH')
+        s = cls(driver_executable_path=driver_executable_path)
         crawler.signals.connect(s.spider_opened, signal=signals.spider_opened)
+
         return s
 
     def process_request(self, request, spider):
-        # Called for each request that goes through the downloader
-        # middleware.
+        if "selenium" not in request.meta:
+            return None
+        self.driver.get(request.url)
 
+        try:
+            element = WebDriverWait(self.driver, 15).until(
+                EC.presence_of_element_located((By.LINK_TEXT, "DOWNLOAD"))
+            )
+        except TimeoutException as ex:
+            print(ex, "No DOWNLOAD Field accessible for " + request.url, "Stop processing of " + request.url)
+            raise IgnoreRequest
+
+        finally:
+            body = str.encode(self.driver.page_source)
+
+        return HtmlResponse(
+            self.driver.current_url,
+            body=body,
+            encoding='utf-8',
+            request=request
+        )
         # Must either:
         # - return None: continue processing this request
         # - or return a Response object
         # - or return a Request object
         # - or raise IgnoreRequest: process_exception() methods of
         #   installed downloader middleware will be called
-        return None
+        # else:
+        #    return None
+
 
     def process_response(self, request, response, spider):
         # Called with the response returned from the downloader.
@@ -101,3 +147,6 @@ class FirmwareDownloaderMiddleware(object):
 
     def spider_opened(self, spider):
         spider.logger.info('Spider opened: %s' % spider.name)
+
+    def spider_closed(self):
+        self.driver.quit()

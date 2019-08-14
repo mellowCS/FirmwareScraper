@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from os import getcwd
 
 # Scrapy settings for firmware project
 #
@@ -13,6 +14,8 @@ BOT_NAME = 'firmware'
 
 SPIDER_MODULES = ['firmware.spiders']
 NEWSPIDER_MODULE = 'firmware.spiders'
+
+FILES_STORE = "./output/"
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
@@ -52,9 +55,9 @@ ROBOTSTXT_OBEY = True
 
 # Enable or disable downloader middlewares
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
-#DOWNLOADER_MIDDLEWARES = {
-#    'firmware.middlewares.FirmwareDownloaderMiddleware': 543,
-#}
+DOWNLOADER_MIDDLEWARES = {
+    'firmware.middlewares.FirmwareDownloaderMiddleware': 543,
+}
 
 # Enable or disable extensions
 # See https://docs.scrapy.org/en/latest/topics/extensions.html
@@ -64,9 +67,9 @@ ROBOTSTXT_OBEY = True
 
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
-#ITEM_PIPELINES = {
-#    'firmware.pipelines.FirmwarePipeline': 300,
-#}
+ITEM_PIPELINES = {
+    'firmware.pipelines.AsusPipeline': 300
+}
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html
@@ -88,3 +91,6 @@ ROBOTSTXT_OBEY = True
 #HTTPCACHE_DIR = 'httpcache'
 #HTTPCACHE_IGNORE_HTTP_CODES = []
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
+
+
+SELENIUM_DRIVER_EXECUTABLE_PATH = getcwd() + '/driver/geckodriver'
