@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from os import getcwd
 
 # Scrapy settings for firmware project
 #
@@ -92,5 +91,6 @@ ITEM_PIPELINES = {
 #HTTPCACHE_IGNORE_HTTP_CODES = []
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
 
-
-SELENIUM_DRIVER_EXECUTABLE_PATH = getcwd() + '/driver/geckodriver'
+# Enable to run with Selenium
+# Set to the driver executable path
+#SELENIUM_DRIVER_EXECUTABLE_PATH = ''
