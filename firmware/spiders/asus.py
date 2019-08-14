@@ -22,10 +22,16 @@ class AsusSpider(Spider):
         ds="Modem-Router",
         pc="PCIe-Netzwerkkarte",
         us="USB-Netzwerkkarte",
-        bt="Bluetooth-Adapter"
+        bt="Bluetooth-Adapter",
+        br="Business-Router"
     )
     base_url = 'https://www.asus.com/de/%s/AllProducts/'
-    start_urls = [base_url % 'Networking']
+    start_urls = [
+        base_url % 'Networking',
+        base_url % 'Motherboards',
+        base_url % 'Commercial-Gaming-Station',
+        base_url % 'Commercial-Servers-Workstations'
+    ]
     # Motherboards, Networking,
 
     # todo doppelpacks und Lyra mini, eventuell Source Code, vlt fragen, was noch wichtig ist?
@@ -86,7 +92,7 @@ class AsusSpider(Spider):
     def extract_realese_date(response):
         release_date = response.xpath('//span[@class="lastdate"]/text()').get()
         if not release_date:
-            release_date = None
+            release_date =
 
         return release_date
 
@@ -94,6 +100,6 @@ class AsusSpider(Spider):
         if product_name[:2].lower() in self.device_dictionary:
             device_class = self.device_dictionary[product_name[:2].lower()]
         else:
-            device_class = None
+            device_class = product_name
 
         return device_class
