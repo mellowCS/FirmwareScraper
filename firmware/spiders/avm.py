@@ -7,6 +7,8 @@ import re
 class AvmSpider(Spider):
     name = 'avm'
 
+    device_classes = {'fritzbox': 'Home Router', 'fritzwlan': ['Repeater', 'Wifi Stick'], 'fritzpowerline': 'PLC Adapter'}
+
     start_urls = [
         'http://download.avm.de/fritzbox/',
         'http://download.avm.de/fritzwlan/',

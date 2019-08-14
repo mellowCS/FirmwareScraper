@@ -1,33 +1,78 @@
 import pytest
-from scrapy.http import Response, Request
-from firmware.spiders import avm
-from pathlib import Path
+from urllib.parse import urljoin
+from parsel import Selector
+import avm
 
-SPIDER = avm.AvmSpider()
+TEST_PAGE = u'''<html lang="en">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>Title</title>
+                    </head>
+                    <body>
+                        <pre>
+                            <a href="../">../</a>
+                            <a href="beta/">beta/</a>
+                            <a href="fritz.os/">fritz.os/</a>
+                            12-Aug-2019 12:13 -
+                            <a href="tools/">tools/</a>
+                            13-Sep-2017 21:18 -
+                            <a href="license.txt">license.txt</a>
+                            21-Jun-2018 01:10 28193
+                        </pre>
+                    </body>
+                </html>'''
 
 
-class RequestIO:
-    def __init__(self, filename: str, url: str):
-        self.filename = filename
+class MockResponse:
+    def __init__(self, url, body=''):
         self.url = url
+        self.body = body
+
+    def urljoin(self, url):
+        return urljoin(self.url, url)
+
+    def xpath(self, xpath):
+        selector = Selector(text=self.body)
+        return selector.xpath(xpath)
 
 
-@pytest.fixture(params=[
-    RequestIO(filename=str(Path(__file__).parent) + '/html_files/fritzwlan_fritzwlan-repeater-1160_deutschland_.html',
-              url='http://download.avm.de/fritzwlan/fritzwlan-repeater-1160/deutschland/'),
-    RequestIO(filename=str(Path(__file__).parent) + '/html_files/fritzwlan_fritzwlan-repeater-1160_deutschland_fritz.os_.html',
-              url='http://download.avm.de/fritzwlan/fritzwlan-repeater-1160/deutschland/fritz.os/')])
-def mock_data(request):
-    return request.param
+class MockRequest:
+    def __init__(self, url, callback):
+        self.url = url
+        self.callback = callback
+
+    def requested_url(self):
+        return self.url
+
+    def callback_function(self):
+        return self.callback
 
 
-def test_parse(mock_data):
-    SPIDER.parse(mock_data)
+@pytest.fixture(scope='session', autouse=True)
+def spider_instance():
+    return avm.AvmSpider()
 
 
-def test_parse_product(mock_data):
-    SPIDER.parse_product(mock_data)
+@pytest.mark.parametrize('response, expected', [(MockResponse(url='root/', body=TEST_PAGE), ['root/fritz.os/'])])
+def test_parse(mocker, spider_instance, response, expected):
+    mocker.patch(target='avm.Request', new=MockRequest)
+    for index, request in enumerate(spider_instance.parse(response=response)):
+        assert request.requested_url() == expected[index]
 
 
-def test_link_extractor(mock_data):
-    print(SPIDER.link_extractor(mock_data, '..'))
+def test_parse_product():
+    pass
+
+
+def test_prepare_item_download():
+    pass
+
+
+@pytest.mark.parametrize('response, prefix, expected', [(MockResponse(url='root/', body=TEST_PAGE), ('tools', 'license', '../', 'beta'), ['root/fritz.os/'])])
+def test_link_extractor(spider_instance, response, prefix, expected):
+    assert spider_instance.link_extractor(response=response, prefix=prefix) == expected
+
+
+@pytest.mark.parametrize('response, expected', [(MockResponse(url='root/', body=TEST_PAGE), ['12-Aug-2019 12:13', '13-Sep-2017 21:18', '21-Jun-2018 01:10'])])
+def test_date_extractor(spider_instance, response, expected):
+    assert spider_instance.date_extractor(response=response) == expected
