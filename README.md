@@ -37,7 +37,7 @@ git clone https://github.com/mellowCS/FirmwareScraper.git
 To run a spider, just go into the project's folder and type the following command into the terminal:
 
 ```
-scrapy crawl *name of spider*
+scrapy crawl *name of spider e.g. avm* -o *name of file to output metadata e.g. spidername.json*
 ```
 
 ## Developer
@@ -78,15 +78,17 @@ for url in ...:
     yield loader.load_item()
 ```
 
-The scrapy script will then automatically download all the files in the pipeline.
+The scrapy script will then automatically download all the files in the pipeline
 
-To automatically create a json file while downloading the corresponding files, the spider has to be run with the following command
+### Selenium
+
+For selenium to be able to render the desired page you need a driver executable (geckodriver, chromedriver etc.) to be in the correct path in the settings.py.
 
 ```
-scrapy crawl *name of spider* -o file_name.json
+SELENIUM_DRIVER_EXECUTABLE_PATH = '/home/username/driver/geckodriver'
 ```
 
-The json file gets populated with the values added to the Field() variables of the Item class specified in the ItemLoader. See the pipeline example above.
+For more information about the installation process of selenium, [see here.](https://selenium-python.readthedocs.io/installation.html)
 
 ### Naming Convention
 
