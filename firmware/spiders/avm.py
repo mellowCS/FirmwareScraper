@@ -9,9 +9,10 @@ from firmware.items import FirmwareItem
 
 
 class AvmSpider(Spider):
+    handle_httpstatus_list = [404]
     name = 'avm'
 
-    device_classes = {'fritzbox': 'Home Router', 'fritzwlan': ['Repeater', 'Wifi Stick'], 'fritzpowerline': 'PLC Adapter'}
+    allowed_domains = ['download.avm.de']
 
     start_urls = [
         'http://download.avm.de/fritzbox/',
@@ -26,22 +27,33 @@ class AvmSpider(Spider):
     def parse_product(self, response: Response) -> Union[FirmwareItem, Request]:
         path = response.request.url.split('/')[:-1]
         if path[-1] == 'fritz.os':
-            yield from self.prepare_item_download(response=response, path=path)
+            yield from self.prepare_item_download(response=response, product_name=path[-3])
         else:
-            for sub in self.link_extractor(response=response, prefix=('recover', '..')):
-                yield Request(url=response.urljoin(sub), callback=self.parse_product)
+            for sub_directory in self.link_extractor(response=response, prefix=('recover', '..')):
+                yield Request(url=response.urljoin(sub_directory), callback=self.parse_product)
 
-    def prepare_item_download(self, response: Response, path: str) -> FirmwareItem:
+    def prepare_item_download(self, response: Response, product_name: str) -> FirmwareItem:
         release_dates = self.date_extractor(response)
         for index, file_url in enumerate(self.link_extractor(response=response, prefix='..')):
             if file_url.endswith('.image'):
                 loader = ItemLoader(item=FirmwareItem(), selector=file_url)
                 loader.add_value('file_urls', file_url)
                 loader.add_value('vendor', 'avm')
-                loader.add_value('device_name', path[-3])
-                loader.add_value('device_class', path[-4])
+                loader.add_value('device_name', product_name)
+                loader.add_value('device_class', self.set_device_class(product_name))
                 loader.add_value('release_date', release_dates[index])
                 yield loader.load_item()
+
+    @staticmethod
+    def set_device_class(product: str) -> str:
+        if product.startswith(('fritzrepeater', 'fritzwlan-repeater')):
+            return 'Repeater'
+        elif product.startswith('fritzwlan-usb'):
+            return 'Wifi-Stick'
+        elif product.startswith('fritzpowerline'):
+            return 'PLC Adapter'
+        else:
+            return 'Router'
 
     @staticmethod
     def link_extractor(response: Response, prefix: Union[str, tuple]) -> list:

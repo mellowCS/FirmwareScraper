@@ -102,11 +102,11 @@ def mocked_request(mocker):
     return mocker.patch(target='avm.Request', new=MockRequest)
 
 
-@pytest.fixture(scope='function', autouse=True)
+@pytest.fixture(scope='function')
 def mocked_download(mocker):
 
-    def item_download(spider_instance, response, path):
-        return [MockResponse('/'.join(path) + '/FRITZ.Box_1234.image', None)]
+    def item_download(spider_instance, response, product_name):
+        return [MockResponse('/FRITZ.Box_1234.image', None)]
 
     return mocker.patch.object(avm.AvmSpider, 'prepare_item_download', item_download)
 
@@ -119,14 +119,26 @@ def test_parse(spider_instance, mocked_request, response, expected):
 
 @pytest.mark.parametrize('response, expected', [(MockResponse(url='/fritzbox/fritzbox-1234/', body=LOCATION_PAGE), ['/fritzbox/fritzbox-1234/deutschland/', '/fritzbox/fritzbox-1234/other/']),
                                                 (MockResponse(url='/fritzbox/fritzbox-1234/other/', body=OS_PAGE), ['/fritzbox/fritzbox-1234/other/fritz.os/']),
-                                                (MockResponse(url='/fritzbox/fritzbox-1234/other/fritz.os/', body=FIRWMARE_PAGE), ['/fritzbox/fritzbox-1234/other/fritz.os/FRITZ.Box_1234.image'])])
+                                                (MockResponse(url='/fritzbox/fritzbox-1234/other/fritz.os/', body=FIRWMARE_PAGE), ['/FRITZ.Box_1234.image'])])
 def test_parse_product(spider_instance, mocked_request, mocked_download, response, expected):
     for index, request in enumerate(spider_instance.parse_product(response=response)):
         assert request.url == expected[index]
 
 
-def test_prepare_item_download():
-    pass
+@pytest.mark.parametrize('response, product_name, expected', [(MockResponse(url='/fritzbox/fritzbox-1234/other/fritz.os/', body=FIRWMARE_PAGE), 'fritzbox-1234',
+                                                               [{'device_class': ['Router'],
+                                                                 'device_name': ['fritzbox-1234'],
+                                                                 'file_urls': ['/fritzbox/fritzbox-1234/other/fritz.os/FRITZ.Box_1234.image'],
+                                                                 'release_date': ['12-Aug-2019 12:13'],
+                                                                 'vendor': ['avm']}])])
+def test_prepare_item_download(spider_instance, response, product_name, expected):
+    assert list(spider_instance.prepare_item_download(response=response, product_name=product_name)) == expected
+
+
+@pytest.mark.parametrize('product, expected', [('fritzbox-6430-cable', 'Router'), ('fritzrepeater-1200', 'Repeater'), ('fritzwlan-repeater-310-a', 'Repeater'),
+                                               ('fritzwlan-usb-stick-ac-430', 'Wifi-Stick'), ('fritzpowerline-1000e', 'PLC Adapter')])
+def test_set_device_class(spider_instance, product, expected):
+    assert spider_instance.set_device_class(product=product) == expected
 
 
 @pytest.mark.parametrize('response, prefix, expected', [(MockResponse(url='/fritzbox/', body=PRODUCT_PAGE), ('beta', 'tools', 'license', '..'), ['/fritzbox/fritzbox-1234/'])])
