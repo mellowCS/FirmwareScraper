@@ -129,7 +129,7 @@ def test_parse_product(spider_instance, mocked_request, mocked_download, respons
                                                                [{'device_class': ['Router'],
                                                                  'device_name': ['fritzbox-1234'],
                                                                  'file_urls': ['/fritzbox/fritzbox-1234/other/fritz.os/FRITZ.Box_1234.image'],
-                                                                 'release_date': ['12-Aug-2019 12:13'],
+                                                                 'release_date': ['12-08-2019'],
                                                                  'vendor': ['avm']}])])
 def test_prepare_item_download(spider_instance, response, product_name, expected):
     assert list(spider_instance.prepare_item_download(response=response, product_name=product_name)) == expected
@@ -146,6 +146,11 @@ def test_link_extractor(spider_instance, response, prefix, expected):
     assert spider_instance.link_extractor(response=response, prefix=prefix) == expected
 
 
-@pytest.mark.parametrize('response, expected', [(MockResponse(url='/fritzbox/fritzbox-1234/other/fritz.os/', body=FIRWMARE_PAGE), ['12-Aug-2019 12:13', '13-Sep-2017 21:18'])])
+@pytest.mark.parametrize('response, expected', [(MockResponse(url='/fritzbox/fritzbox-1234/other/fritz.os/', body=FIRWMARE_PAGE), ['12-08-2019', '13-09-2017'])])
 def test_date_extractor(spider_instance, response, expected):
     assert spider_instance.date_extractor(response=response) == expected
+
+
+@pytest.mark.parametrize('date, expected', [('12-Aug-2019', '12-08-2019'), ('24-Dec-2019', '24-12-2019')])
+def test_date_converter(spider_instance, date, expected):
+    assert spider_instance.date_converter(date=date) == expected
