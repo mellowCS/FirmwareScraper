@@ -63,7 +63,7 @@ FIRWMARE_PAGE = u'''<html lang="en">
                         <body>
                             <pre>
                                 <a href="../">../</a>
-                                <a href="FRITZ.Box_1234.image">FRITZ.Box_1234.image</a>
+                                <a href="FRITZ.Box_1234-07.12.image">FRITZ.Box_1234-07.12.image</a>
                                 12-Aug-2019 12:13 22241280
                                 <a href="info_de.txt">info_de.txt</a>
                                 13-Sep-2017 21:18 47418
@@ -106,7 +106,7 @@ def mocked_request(mocker):
 def mocked_download(mocker):
 
     def item_download(spider_instance, response, product_name):
-        return [MockResponse('/FRITZ.Box_1234.image', None)]
+        return [MockResponse('/FRITZ.Box_1234-07.12.image', None)]
 
     return mocker.patch.object(avm.AvmSpider, 'prepare_item_download', item_download)
 
@@ -119,7 +119,7 @@ def test_parse(spider_instance, mocked_request, response, expected):
 
 @pytest.mark.parametrize('response, expected', [(MockResponse(url='/fritzbox/fritzbox-1234/', body=LOCATION_PAGE), ['/fritzbox/fritzbox-1234/deutschland/', '/fritzbox/fritzbox-1234/other/']),
                                                 (MockResponse(url='/fritzbox/fritzbox-1234/other/', body=OS_PAGE), ['/fritzbox/fritzbox-1234/other/fritz.os/']),
-                                                (MockResponse(url='/fritzbox/fritzbox-1234/other/fritz.os/', body=FIRWMARE_PAGE), ['/FRITZ.Box_1234.image'])])
+                                                (MockResponse(url='/fritzbox/fritzbox-1234/other/fritz.os/', body=FIRWMARE_PAGE), ['/FRITZ.Box_1234-07.12.image'])])
 def test_parse_product(spider_instance, mocked_request, mocked_download, response, expected):
     for index, request in enumerate(spider_instance.parse_product(response=response)):
         assert request.url == expected[index]
@@ -128,9 +128,10 @@ def test_parse_product(spider_instance, mocked_request, mocked_download, respons
 @pytest.mark.parametrize('response, product_name, expected', [(MockResponse(url='/fritzbox/fritzbox-1234/other/fritz.os/', body=FIRWMARE_PAGE), 'fritzbox-1234',
                                                                [{'device_class': ['Router'],
                                                                  'device_name': ['fritzbox-1234'],
-                                                                 'file_urls': ['/fritzbox/fritzbox-1234/other/fritz.os/FRITZ.Box_1234.image'],
+                                                                 'file_urls': ['/fritzbox/fritzbox-1234/other/fritz.os/FRITZ.Box_1234-07.12.image'],
+                                                                 'firmware_version': ['07.12'],
                                                                  'release_date': ['12-08-2019'],
-                                                                 'vendor': ['avm']}])])
+                                                                 'vendor': ['AVM']}])])
 def test_prepare_item_download(spider_instance, response, product_name, expected):
     assert list(spider_instance.prepare_item_download(response=response, product_name=product_name)) == expected
 
@@ -154,3 +155,13 @@ def test_date_extractor(spider_instance, response, expected):
 @pytest.mark.parametrize('date, expected', [('12-Aug-2019', '12-08-2019'), ('24-Dec-2019', '24-12-2019')])
 def test_date_converter(spider_instance, date, expected):
     assert spider_instance.date_converter(date=date) == expected
+
+
+@pytest.mark.parametrize('firmware, specifier, expected', [('fritz.powerline_1000ET_01_05.image', 'fritzpowerline-1000e-t', '01.05'),
+                                                           ('FRITZ.Powerline_1260E.157.07.12.image', None, '157.07.12'),
+                                                           ('AVM_FRITZ%21WLAN_USB_Stick_AC_430_32Bit_Build_180612.zip', None, 'Build_180612'),
+                                                           ('avm_fritz%21wlanusb_stick_ac860_32Bit_build_180612.zip', None, 'build_180612'),
+                                                           ('FRITZ.Box_6810_LTE.108.06.34.image', None, '108.06.34'),
+                                                           ('FRITZ.Box_3490.en-de-es-it-fr-pl.140.07.01.image', None, '140.07.01')])
+def test_version_extractor(spider_instance, firmware, specifier, expected):
+    assert spider_instance.version_extractor(firmware=firmware, product_specifier=specifier) == expected
