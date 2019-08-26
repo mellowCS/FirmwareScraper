@@ -40,32 +40,33 @@ class LinksysSpider(Spider):
                       ClassIdentifier(['WML']): 'Music System'}
 
     x_path = {
-        'product_pages': '//div[@class="item"]//@href',
+        'product_urls': '//div[@class="item"]//@href',
+        'device_names': '//div[@class="item"]//a/text()',
         'software_exists': '//div[@class="support-downloads col-sm-6"]//a[@title="Software herunterladen"]/@href',
-        'product_name': '//div[@class="col-xs-9 support-product-details-block"]/h1/text()'
+        'firmware': '//a[contains(@href, "/firmware/") and contains(@href, ".img")]/@href'
     }
 
     start_urls = ['https://www.linksys.com/de/support/sitemap/']
 
     def parse(self, response: Response) -> Request:
-        for product_page in response.xpath(self.x_path['product_pages']).extract():
-            yield Request(url=response.urljoin(product_page), callback=self.parse_product)
+        for product_url, device_name in list(zip(response.xpath(self.x_path['product_urls']).extract(), response.xpath(self.x_path['device_names']).extract())):
+            yield Request(url=response.urljoin(product_url), callback=self.parse_product, cb_kwargs=dict(device_name=device_name))
 
-    def parse_product(self, response: Response) -> Union[FirmwareItem, None]:
+    def parse_product(self, response: Response, device_name: str) -> Union[Request, None]:
         software_page = response.xpath(self.x_path['software_exists']).get()
         if software_page:
-            yield Request(url=response.urljoin(software_page), callback=self.parse_firmware,
-                          cb_kwargs=dict(device_name=response.xpath(self.x_path['product_name']).get()))
+            yield Request(url=response.urljoin(software_page), callback=self.parse_firmware, cb_kwargs=dict(device_name=device_name))
+        else:
+            yield None
 
     def parse_firmware(self, response: Response, device_name: str) -> FirmwareItem:
-        for file_url in response.xpath('//@href').extract():
-            if self.is_firmware(software=file_url):
-                yield self.prepare_item_pipeline(meta_data=self.prepare_meta_data(response=response, device_name=device_name, file_url=file_url))
+        for firmware in response.xpath(self.x_path['firmware']).extract():
+            yield from self.prepare_item_pipeline(meta_data=self.prepare_meta_data(response=response, device_name=device_name, file_url=firmware))
 
     @staticmethod
     def prepare_item_pipeline(meta_data: dict) -> FirmwareItem:
-        loader = ItemLoader(item=FirmwareItem(), selector=meta_data['file_url'])
-        loader.add_value('file_urls', meta_data['file_url'])
+        loader = ItemLoader(item=FirmwareItem(), selector=meta_data['file_urls'])
+        loader.add_value('file_urls', meta_data['file_urls'])
         loader.add_value('vendor', meta_data['vendor'])
         loader.add_value('device_name', meta_data['device_name'])
         loader.add_value('firmware_version', meta_data['firmware_version'])
@@ -74,13 +75,9 @@ class LinksysSpider(Spider):
 
         yield loader.load_item()
 
-    @staticmethod
-    def is_firmware(software: str) -> bool:
-        return True if '/firmware/' in software and software.endswith('.img') else False
-
     def prepare_meta_data(self, response: Response, device_name: str, file_url: str) -> dict:
         return {
-            'file_url': file_url,
+            'file_urls': file_url,
             'vendor': 'Linksys',
             'device_name': device_name,
             'firmware_version': self.extract_version(response=response),
