@@ -66,7 +66,7 @@ DOWNLOAD_TIMEOUT = 320
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-    'firmware.pipelines.FirmwarePipeline': 300,
+    'firmware.pipelines.LinksysPipeline': 1,
 }
 
 FILES_STORE = 'firmware_files/'

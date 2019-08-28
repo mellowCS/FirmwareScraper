@@ -1,7 +1,6 @@
 from scrapy import Request, Spider
 from scrapy.http import Response
 from scrapy.loader import ItemLoader
-from typing import Union
 
 from firmware.items import FirmwareItem
 
@@ -52,12 +51,10 @@ class LinksysSpider(Spider):
         for product_url, device_name in list(zip(response.xpath(self.x_path['product_urls']).extract(), response.xpath(self.x_path['device_names']).extract())):
             yield Request(url=response.urljoin(product_url), callback=self.parse_product, cb_kwargs=dict(device_name=device_name))
 
-    def parse_product(self, response: Response, device_name: str) -> Union[Request, None]:
+    def parse_product(self, response: Response, device_name: str) -> Request:
         software_page = response.xpath(self.x_path['software_exists']).get()
         if software_page:
             yield Request(url=response.urljoin(software_page), callback=self.parse_firmware, cb_kwargs=dict(device_name=device_name))
-        else:
-            yield None
 
     def parse_firmware(self, response: Response, device_name: str) -> FirmwareItem:
         for firmware in response.xpath(self.x_path['firmware']).extract():
