@@ -1,7 +1,7 @@
 import pytest
-from urllib.parse import urljoin
-from parsel import Selector
+
 import avm
+from mock_classes import MockResponse, MockRequest
 
 PRODUCT_PAGE = u'''<html lang="en">
                        <head>
@@ -72,96 +72,86 @@ FIRWMARE_PAGE = u'''<html lang="en">
                     </html>'''
 
 
-class MockResponse:
-    def __init__(self, url, body):
-        self.url = url
-        self.body = body
-        self.request = MockRequest(url, None)
-
-    def urljoin(self, url):
-        return urljoin(self.url, url)
-
-    def xpath(self, xpath):
-        selector = Selector(text=self.body)
-        return selector.xpath(xpath)
-
-
-class MockRequest:
-    def __init__(self, url, callback):
-        self.url = url
-        self.callback = callback
-
-
 @pytest.fixture(scope='session', autouse=True)
 def spider_instance():
     return avm.AvmSpider()
 
 
 @pytest.fixture(scope='function', autouse=True)
-def mocked_request(mocker):
-    return mocker.patch(target='avm.Request', new=MockRequest)
+def mocked_request(monkeypatch):
+    monkeypatch.setattr(avm, 'Request', MockRequest)
 
 
-@pytest.fixture(scope='function')
-def mocked_download(mocker):
-
-    def item_download(spider_instance, response, product_name):
-        return [MockResponse('/FRITZ.Box_1234-07.12.image', None)]
-
-    return mocker.patch.object(avm.AvmSpider, 'prepare_item_download', item_download)
-
-
-@pytest.mark.parametrize('response, expected', [(MockResponse(url='/fritzbox/', body=PRODUCT_PAGE), ['/fritzbox/fritzbox-1234/'])])
-def test_parse(spider_instance, mocked_request, response, expected):
-    for index, request in enumerate(spider_instance.parse(response=response)):
-        assert request.url == expected[index]
+@pytest.mark.parametrize('response, expected', [(MockResponse(url='/fritzbox/', body=PRODUCT_PAGE), '/fritzbox/fritzbox-1234/')])
+def test_parse(spider_instance, response, expected):
+    for request in spider_instance.parse(response=response):
+        assert request.url == expected
 
 
 @pytest.mark.parametrize('response, expected', [(MockResponse(url='/fritzbox/fritzbox-1234/', body=LOCATION_PAGE), ['/fritzbox/fritzbox-1234/deutschland/', '/fritzbox/fritzbox-1234/other/']),
                                                 (MockResponse(url='/fritzbox/fritzbox-1234/other/', body=OS_PAGE), ['/fritzbox/fritzbox-1234/other/fritz.os/']),
                                                 (MockResponse(url='/fritzbox/fritzbox-1234/other/fritz.os/', body=FIRWMARE_PAGE), ['/FRITZ.Box_1234-07.12.image'])])
-def test_parse_product(spider_instance, mocked_request, mocked_download, response, expected):
-    for index, request in enumerate(spider_instance.parse_product(response=response)):
-        assert request.url == expected[index]
+def test_parse_product(monkeypatch, spider_instance, response, expected):
+    with monkeypatch.context() as monkey:
+        monkey.setattr(avm.AvmSpider, 'parse_firmware', lambda *_, **__: [MockRequest(url='/FRITZ.Box_1234-07.12.image', callback=None)])
+        for index, request in enumerate(spider_instance.parse_product(response=response)):
+            assert request.url == expected[index]
 
 
-@pytest.mark.parametrize('response, product_name, expected', [(MockResponse(url='/fritzbox/fritzbox-1234/other/fritz.os/', body=FIRWMARE_PAGE), 'fritzbox-1234',
-                                                               [{'device_class': ['Router'],
-                                                                 'device_name': ['fritzbox-1234'],
-                                                                 'file_urls': ['/fritzbox/fritzbox-1234/other/fritz.os/FRITZ.Box_1234-07.12.image'],
-                                                                 'firmware_version': ['07.12'],
-                                                                 'release_date': ['12-08-2019'],
-                                                                 'vendor': ['AVM']}])])
-def test_prepare_item_download(spider_instance, response, product_name, expected):
-    assert list(spider_instance.prepare_item_download(response=response, product_name=product_name)) == expected
+@pytest.mark.parametrize('response, device_name, expected', [(MockResponse(url='/fritzbox/fritzbox-1234/other/fritz.os/', body=FIRWMARE_PAGE), 'fritzbox-1234', ['test'])])
+def test_parse_firmware(monkeypatch, spider_instance, response, device_name, expected):
+    with monkeypatch.context() as monkey:
+        monkey.setattr(avm.AvmSpider, 'prepare_meta_data', lambda *_, **__: {})
+        monkey.setattr(avm.AvmSpider, 'prepare_item_pipeline', lambda *_, **__: {'test': ['test']})
+        assert list(spider_instance.parse_firmware(response=response, device_name=device_name)) == expected
+
+
+@pytest.mark.parametrize('meta_data, expected', [(dict(file_urls=['/FRITZ.Box_1234-07.12.image'], vendor='AVM',
+                                                       device_name='fritzbox-1234', firmware_version='07.12',
+                                                       device_class='Router', release_date='12-08-2019'),
+                                                  [dict(file_urls=['/FRITZ.Box_1234-07.12.image'], vendor=['AVM'],
+                                                       device_name=['fritzbox-1234'], firmware_version=['07.12'],
+                                                       device_class=['Router'], release_date=['12-08-2019'])]
+                                                  )])
+def test_prepare_item_pipeline(spider_instance, meta_data, expected):
+    assert list(spider_instance.prepare_item_pipeline(meta_data=meta_data)) == expected
+
+
+def test_prepare_meta_data():
+    pass
 
 
 @pytest.mark.parametrize('product, expected', [('fritzbox-6430-cable', 'Router'), ('fritzrepeater-1200', 'Repeater'), ('fritzwlan-repeater-310-a', 'Repeater'),
                                                ('fritzwlan-usb-stick-ac-430', 'Wifi-Stick'), ('fritzpowerline-1000e', 'PLC Adapter')])
-def test_set_device_class(spider_instance, product, expected):
-    assert spider_instance.set_device_class(product=product) == expected
+def test_map_device_class(spider_instance, product, expected):
+    assert spider_instance.map_device_class(product=product) == expected
 
 
 @pytest.mark.parametrize('response, prefix, expected', [(MockResponse(url='/fritzbox/', body=PRODUCT_PAGE), ('beta', 'tools', 'license', '..'), ['/fritzbox/fritzbox-1234/'])])
-def test_link_extractor(spider_instance, response, prefix, expected):
-    assert spider_instance.link_extractor(response=response, prefix=prefix) == expected
+def test_extract_links(spider_instance, response, prefix, expected):
+    assert spider_instance.extract_links(response=response, prefix=prefix) == expected
 
 
 @pytest.mark.parametrize('response, expected', [(MockResponse(url='/fritzbox/fritzbox-1234/other/fritz.os/', body=FIRWMARE_PAGE), ['12-08-2019', '13-09-2017'])])
-def test_date_extractor(spider_instance, response, expected):
-    assert spider_instance.date_extractor(response=response) == expected
+def test_extract_dates(spider_instance, response, expected):
+    assert spider_instance.extract_dates(response=response) == expected
 
 
 @pytest.mark.parametrize('date, expected', [('12-Aug-2019', '12-08-2019'), ('24-Dec-2019', '24-12-2019')])
-def test_date_converter(spider_instance, date, expected):
-    assert spider_instance.date_converter(date=date) == expected
+def test_convert_date(spider_instance, date, expected):
+    assert spider_instance.convert_date(date=date) == expected
 
 
 @pytest.mark.parametrize('firmware, specifier, expected', [('fritz.powerline_1000ET_01_05.image', 'fritzpowerline-1000e-t', '01.05'),
+                                                           ('fritz.powerline_1000A_E_02_06.image', 'fritzpowerline-1000a-e', '02.06'),
                                                            ('FRITZ.Powerline_1260E.157.07.12.image', None, '157.07.12'),
-                                                           ('AVM_FRITZ%21WLAN_USB_Stick_AC_430_32Bit_Build_180612.zip', None, 'Build_180612'),
-                                                           ('avm_fritz%21wlanusb_stick_ac860_32Bit_build_180612.zip', None, 'build_180612'),
                                                            ('FRITZ.Box_6810_LTE.108.06.34.image', None, '108.06.34'),
                                                            ('FRITZ.Box_3490.en-de-es-it-fr-pl.140.07.01.image', None, '140.07.01')])
-def test_version_extractor(spider_instance, firmware, specifier, expected):
-    assert spider_instance.version_extractor(firmware=firmware, product_specifier=specifier) == expected
+def test_extract_version(spider_instance, firmware, specifier, expected):
+    assert spider_instance.extract_version(firmware=firmware, product_specifier=specifier) == expected
+
+
+@pytest.mark.parametrize('array, prefix, index, expected', [(['a', 'b', 'c'], '', 0, ['abc', 'a_b_c', 'a_bc', 'ab_c']),
+                                                            (['a', 'b', 'c', 'd'], '', 0, ['abcd', 'a_b_c_d', 'a_bcd', 'ab_cd', 'abc_d', 'a_b_cd', 'a_bc_d', 'ab_c_d'])])
+def test_permutations(spider_instance, array, prefix, index, expected):
+    assert sorted(list(spider_instance.permutations(array=array, prefix=prefix, index=index))) == sorted(expected)
