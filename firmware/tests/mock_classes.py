@@ -1,5 +1,6 @@
-from parsel import Selector
 from urllib.parse import urljoin
+
+from parsel import Selector
 
 
 class MockResponse:

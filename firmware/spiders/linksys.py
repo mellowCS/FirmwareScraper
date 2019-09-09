@@ -1,6 +1,7 @@
 from scrapy import Request, Spider
 from scrapy.http import Response
 from scrapy.loader import ItemLoader
+import re
 
 from firmware.items import FirmwareItem
 
@@ -42,7 +43,7 @@ class LinksysSpider(Spider):
         'product_urls': '//div[@class="item"]//@href',
         'device_names': '//div[@class="item"]//a/text()',
         'software_exists': '//div[@class="support-downloads col-sm-6"]//a[@title="Software herunterladen"]/@href',
-        'firmware': '//a[contains(@href, "/firmware/") and contains(@href, ".img")]/@href'
+        'firmware': '//div[@id="support-article-downloads"]/div[@class="article-accordian-content collapse-me"]',
     }
 
     start_urls = ['https://www.linksys.com/de/support/sitemap/']
@@ -57,8 +58,14 @@ class LinksysSpider(Spider):
             yield Request(url=response.urljoin(software_page), callback=self.parse_firmware, cb_kwargs=dict(device_name=device_name))
 
     def parse_firmware(self, response: Response, device_name: str) -> FirmwareItem:
-        for firmware in response.xpath(self.x_path['firmware']).extract():
-            yield from self.prepare_item_pipeline(meta_data=self.prepare_meta_data(response=response, device_name=device_name, file_url=firmware))
+        product_dictionaries = list()
+        for version in response.xpath(self.x_path['firmware']).extract():
+            for firmware in re.findall(r'.*(Ver\..*href=".*/firmware/.*").*', version):
+                if re.match(r'.*href=".+(\.img|\.bin)".*', firmware):
+                    meta_data = self.prepare_meta_data(firmware=firmware, device_name=device_name, device_class=self.map_device_class(device_name))
+                    if meta_data not in product_dictionaries:
+                        product_dictionaries.append(meta_data)
+                        yield from self.prepare_item_pipeline(meta_data=meta_data)
 
     @staticmethod
     def prepare_item_pipeline(meta_data: dict) -> FirmwareItem:
@@ -72,14 +79,14 @@ class LinksysSpider(Spider):
 
         yield loader.load_item()
 
-    def prepare_meta_data(self, response: Response, device_name: str, file_url: str) -> dict:
+    def prepare_meta_data(self, firmware: str, device_name: str, device_class: str) -> dict:
         return {
-            'file_urls': file_url,
+            'file_urls': re.search(r'href="(.*\.bin|.*\.img)"', firmware).group(1),
             'vendor': 'Linksys',
             'device_name': device_name,
-            'firmware_version': self.extract_version(response=response),
-            'device_class': self.map_device_class(device_name),
-            'release_date': self.extract_date(response=response)
+            'firmware_version': re.search(r'Ver\.([^\<\([a-zA-Z]+]*)', firmware).group(1).strip(' '),
+            'device_class': device_class,
+            'release_date': self.convert_date(re.search(r'([^\d]+)(\d+\/\d+\/\d{4}).*', firmware).group(2))
         }
 
     def map_device_class(self, product: str) -> str:
@@ -92,9 +99,7 @@ class LinksysSpider(Spider):
             raise e
 
     @staticmethod
-    def extract_date(response: Response) -> str:
-        return ''
-
-    @staticmethod
-    def extract_version(response: Response) -> str:
-        return ''
+    def convert_date(date: str):
+        day_month_year = date.split('/')
+        day_month_year[0], day_month_year[1] = day_month_year[1], day_month_year[0]
+        return '-'.join(['0' + digit if len(digit) < 2 else digit for digit in day_month_year])
