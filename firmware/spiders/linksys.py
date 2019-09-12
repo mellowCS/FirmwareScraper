@@ -1,6 +1,7 @@
 from scrapy import Request, Spider
 from scrapy.http import Response
 from scrapy.loader import ItemLoader
+from typing import Generator
 import re
 
 from firmware.items import FirmwareItem
@@ -17,7 +18,7 @@ class UnknownDeviceClassException(Exception):
         self.error_message()
 
     def error_message(self):
-        print('\nProduct: {} not defined in device class dictionary\n'.format(self.product))
+        print('\nProduct: \"{}\" not defined in device class dictionary\n'.format(self.product))
 
 
 class LinksysSpider(Spider):
@@ -31,7 +32,7 @@ class LinksysSpider(Spider):
                       ClassIdentifier(['SE', 'EZX']): 'Home Switch', ClassIdentifier(['LGS']): 'Business Switch',
                       ClassIdentifier(['LACX', 'LACG']): 'Transceiver', ClassIdentifier(['LACP']): 'Injector',
                       ClassIdentifier(['RE', 'WRE']): 'Repeater', ClassIdentifier(['WUSB', 'USB', 'AE']): 'Wifi USB Adapter',
-                      ClassIdentifier(['WET', 'WUM']): 'Bridge', ClassIdentifier(['PL']): 'PLC Adapter', ClassIdentifier(['AM']): 'Modem',
+                      ClassIdentifier(['WET', 'WUM', 'WES']): 'Bridge', ClassIdentifier(['PL']): 'PLC Adapter', ClassIdentifier(['AM']): 'Modem',
                       ClassIdentifier(['CIT']): 'Internet Telephone', ClassIdentifier(['WGA', 'WMA', 'WPC']): 'Wireless Adapter',
                       ClassIdentifier(['DMP', 'DMC', 'DMR', 'DMS', 'KWH', 'MCC']): 'Wireless Home Audio', ClassIdentifier(['DMA']): 'Media Center Extender',
                       ClassIdentifier(['LNE', 'EG', 'WMP']): 'PCI Network Adapter', ClassIdentifier(['EF', 'EP', 'PPS', 'PSU', 'WPS']): 'Print Server',
@@ -48,16 +49,16 @@ class LinksysSpider(Spider):
 
     start_urls = ['https://www.linksys.com/de/support/sitemap/']
 
-    def parse(self, response: Response) -> Request:
+    def parse(self, response: Response) -> Generator[Request, None, None]:
         for product_url, device_name in list(zip(response.xpath(self.x_path['product_urls']).extract(), response.xpath(self.x_path['device_names']).extract())):
             yield Request(url=response.urljoin(product_url), callback=self.parse_product, cb_kwargs=dict(device_name=device_name))
 
-    def parse_product(self, response: Response, device_name: str) -> Request:
+    def parse_product(self, response: Response, device_name: str) -> Generator[Request, None, None]:
         software_page = response.xpath(self.x_path['software_exists']).get()
         if software_page:
             yield Request(url=response.urljoin(software_page), callback=self.parse_firmware, cb_kwargs=dict(device_name=device_name))
 
-    def parse_firmware(self, response: Response, device_name: str) -> FirmwareItem:
+    def parse_firmware(self, response: Response, device_name: str) -> Generator[FirmwareItem, None, None]:
         product_dictionaries = list()
         for version in response.xpath(self.x_path['firmware']).extract():
             for firmware in re.findall(r'.*(Ver\..*href=".*/firmware/.*").*', version):
@@ -68,7 +69,7 @@ class LinksysSpider(Spider):
                         yield from self.prepare_item_pipeline(meta_data=meta_data)
 
     @staticmethod
-    def prepare_item_pipeline(meta_data: dict) -> FirmwareItem:
+    def prepare_item_pipeline(meta_data: dict) -> Generator[FirmwareItem, None, None]:
         loader = ItemLoader(item=FirmwareItem(), selector=meta_data['file_urls'])
         loader.add_value('file_urls', meta_data['file_urls'])
         loader.add_value('vendor', meta_data['vendor'])
@@ -80,26 +81,28 @@ class LinksysSpider(Spider):
         yield loader.load_item()
 
     def prepare_meta_data(self, firmware: str, device_name: str, device_class: str) -> dict:
-        return {
-            'file_urls': re.search(r'href="(.*\.bin|.*\.img)"', firmware).group(1),
-            'vendor': 'Linksys',
-            'device_name': device_name,
-            'firmware_version': re.search(r'Ver\.([^\<\([a-zA-Z]+]*)', firmware).group(1).strip(' '),
-            'device_class': device_class,
-            'release_date': self.convert_date(re.search(r'([^\d]+)(\d+\/\d+\/\d{4}).*', firmware).group(2))
-        }
+        match = re.search(r'href="(.*\.bin|.*\.img)"', firmware)
+        file_urls = match.group(1) if match else 'N/A'
+
+        match = re.search(r'Ver\.([^\<\([a-zA-Z]+]*)', firmware)
+        version = match.group(1).strip(' ') if match else 'N/A'
+
+        match = re.search(r'([^\d]+)(\d+\/\d+\/\d{4}).*', firmware)
+        date = self.convert_date(match.group(2)) if match else 'N/A'
+
+        return dict(file_urls=file_urls, vendor='Linksys', device_name=device_name,
+                    firmware_version=version, device_class=device_class, release_date=date)
 
     def map_device_class(self, product: str) -> str:
-        try:
-            for identifiers in self.device_classes.keys():
-                for shortcut in identifiers.shortcuts:
-                    if product.startswith(shortcut):
-                        return self.device_classes[identifiers]
-        except UnknownDeviceClassException(product=product) as e:
-            raise e
+        for identifiers in self.device_classes.keys():
+            for shortcut in identifiers.shortcuts:
+                if product.startswith(shortcut):
+                    return self.device_classes[identifiers]
+
+        raise UnknownDeviceClassException(product=product)
 
     @staticmethod
-    def convert_date(date: str):
+    def convert_date(date: str) -> str:
         day_month_year = date.split('/')
         day_month_year[0], day_month_year[1] = day_month_year[1], day_month_year[0]
         return '-'.join(['0' + digit if len(digit) < 2 else digit for digit in day_month_year])

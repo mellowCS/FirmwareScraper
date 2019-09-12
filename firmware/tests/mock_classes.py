@@ -7,7 +7,7 @@ class MockResponse:
     def __init__(self, url, body):
         self.url = url
         self.body = body
-        self.request = MockRequest(url, None)
+        self.request = MockRequest(url, None, None)
 
     def urljoin(self, url):
         return urljoin(self.url, url)
@@ -18,6 +18,7 @@ class MockResponse:
 
 
 class MockRequest:
-    def __init__(self, url, callback):
+    def __init__(self, url, callback, cb_kwargs):
         self.url = url
         self.callback = callback
+        self.cb_kwargs = cb_kwargs
