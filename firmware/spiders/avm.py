@@ -1,6 +1,6 @@
 from calendar import month_abbr
 from re import search
-from typing import Union
+from typing import Union, Generator
 
 from scrapy import Request, Spider
 from scrapy.http import Response
@@ -21,11 +21,11 @@ class AvmSpider(Spider):
         'http://download.avm.de/fritzpowerline/'
     ]
 
-    def parse(self, response: Response) -> Request:
+    def parse(self, response: Response) -> Generator[Request, None, None]:
         for product_url in self.extract_links(response=response, prefix=('beta', 'tools', 'license', '..')):
             yield Request(url=product_url, callback=self.parse_product)
 
-    def parse_product(self, response: Response) -> Union[FirmwareItem, Request]:
+    def parse_product(self, response: Response) -> Union[Generator[FirmwareItem, None, None], Generator[Request, None, None]]:
         path = response.request.url.split('/')[:-1]
         if path[-1] == 'fritz.os':
             yield from self.parse_firmware(response=response, device_name=path[-3])
@@ -33,14 +33,14 @@ class AvmSpider(Spider):
             for sub_directory in self.extract_links(response=response, prefix=('recover', '..')):
                 yield Request(url=response.urljoin(sub_directory), callback=self.parse_product)
 
-    def parse_firmware(self, response: Response, device_name: str) -> FirmwareItem:
+    def parse_firmware(self, response: Response, device_name: str) -> Generator[FirmwareItem, None, None]:
         release_dates = self.extract_dates(response)
         for index, file_url in enumerate(self.extract_links(response=response, prefix='..')):
             if file_url.endswith('.image'):
                 yield from self.prepare_item_pipeline(meta_data=self.prepare_meta_data(response=response, device_name=device_name, release_date=release_dates[index], file_url=file_url))
 
     @staticmethod
-    def prepare_item_pipeline(meta_data: dict) -> FirmwareItem:
+    def prepare_item_pipeline(meta_data: dict) -> Generator[FirmwareItem, None, None]:
         loader = ItemLoader(item=FirmwareItem(), selector=meta_data['file_urls'])
         loader.add_value('file_urls', meta_data['file_urls'])
         loader.add_value('vendor', meta_data['vendor'])
@@ -101,7 +101,7 @@ class AvmSpider(Spider):
         else:
             return search(r'FRITZ\.(Box|Powerline|Repeater)_(\w+)(\.(\w{2}-)+\w{2}\.)?([-\.])?(.*)\.image', firmware).group(6)
 
-    def permutations(self, array: list, prefix: str, index: int):
+    def permutations(self, array: list, prefix: str, index: int) -> Generator[str, None, None]:
         if index < len(array) - 1:
             for result in self.permutations(array=array, prefix=prefix + array[index] + '_', index=index + 1):
                 yield result

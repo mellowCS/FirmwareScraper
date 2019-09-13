@@ -18,6 +18,7 @@ class MockResponse:
 
 
 class MockRequest:
-    def __init__(self, url, callback):
+    def __init__(self, url, callback, cb_kwargs=None):
         self.url = url
         self.callback = callback
+        self.cb_kwargs = cb_kwargs

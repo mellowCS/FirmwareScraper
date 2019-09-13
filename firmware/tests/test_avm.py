@@ -93,7 +93,7 @@ def test_parse(spider_instance, response, expected):
                                                 (MockResponse(url='/fritzbox/fritzbox-1234/other/fritz.os/', body=FIRWMARE_PAGE), ['/FRITZ.Box_1234-07.12.image'])])
 def test_parse_product(monkeypatch, spider_instance, response, expected):
     with monkeypatch.context() as monkey:
-        monkey.setattr(avm.AvmSpider, 'parse_firmware', lambda *_, **__: [MockRequest(url='/FRITZ.Box_1234-07.12.image', callback=None)])
+        monkey.setattr(avm.AvmSpider, 'parse_firmware', lambda *_, **__: [MockRequest(url='/FRITZ.Box_1234-07.12.image', callback=None, cb_kwargs=None)])
         for index, request in enumerate(spider_instance.parse_product(response=response)):
             assert request.url == expected[index]
 
