@@ -117,17 +117,26 @@ def test_parse_product(spider_instance, response, device_name, expected):
         assert request.cb_kwargs == expected[1]
 
 
-@pytest.mark.parametrize('response, device_name, expected', [(MockResponse(url='https://www.linksys.com/de/support-article?articleNum=1234', body=FIRMWARE_PAGE), 'Broadband Router',
-                                                              [dict(file_urls=['http://downloads.linksys.com/downloads/firmware/FW_EA6300_1.203.23.20394_prod.gpg.img'],
-                                                                    vendor=['Linksys'], device_name=['Broadband Router'],
-                                                                    firmware_version=['1.203.23'], device_class=['Router'],
-                                                                    release_date=['23-08-2019']),
-                                                               dict(file_urls=['http://downloads.linksys.com/downloads/firmware/FW_EA6300_2.03.21_prod.img'],
-                                                                    vendor=['Linksys'], device_name=['Broadband Router'],
-                                                                    firmware_version=['2.03.21'], device_class=['Router'],
-                                                                    release_date=['05-02-2018'])])])
-def test_parse_firmware(spider_instance, response, device_name, expected):
-    for index, item in enumerate(list(spider_instance.parse_firmware(response=response, device_name=device_name))):
+@pytest.mark.parametrize('response, device_name, expected', [(MockResponse(url='https://www.linksys.com/de/support-article?articleNum=1234', body=FIRMWARE_PAGE), 'Broadband Router', 1)])
+def test_parse_versions(monkeypatch, spider_instance, response, device_name, expected):
+    def mock_parse():
+        yield 1
+    with monkeypatch.context() as monkey:
+        monkey.setattr(linksys.LinksysSpider, 'parse_firmware', lambda *_, **__: mock_parse())
+        assert list(spider_instance.parse_versions(response=response, device_name=device_name))[0] == expected
+
+
+@pytest.mark.parametrize('device_name, version, expected', [('Broadband Router', FIRMWARE_PAGE,
+                                                             [dict(file_urls=['http://downloads.linksys.com/downloads/firmware/FW_EA6300_1.203.23.20394_prod.gpg.img'],
+                                                                   vendor=['Linksys'], device_name=['Broadband Router'],
+                                                                   firmware_version=['1.203.23'], device_class=['Router'],
+                                                                   release_date=['23-08-2019']),
+                                                              dict(file_urls=['http://downloads.linksys.com/downloads/firmware/FW_EA6300_2.03.21_prod.img'],
+                                                                   vendor=['Linksys'], device_name=['Broadband Router'],
+                                                                   firmware_version=['2.03.21'], device_class=['Router'],
+                                                                   release_date=['05-02-2018'])])])
+def test_parse_firmware(spider_instance, device_name, version, expected):
+    for index, item in enumerate(list(spider_instance.parse_firmware(device_name=device_name, version=version))):
         assert item == expected[index]
 
 

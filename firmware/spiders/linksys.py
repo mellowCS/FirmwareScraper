@@ -56,17 +56,20 @@ class LinksysSpider(Spider):
     def parse_product(self, response: Response, device_name: str) -> Generator[Request, None, None]:
         software_page = response.xpath(self.x_path['software_exists']).get()
         if software_page:
-            yield Request(url=response.urljoin(software_page), callback=self.parse_firmware, cb_kwargs=dict(device_name=device_name))
+            yield Request(url=response.urljoin(software_page), callback=self.parse_versions, cb_kwargs=dict(device_name=device_name))
 
-    def parse_firmware(self, response: Response, device_name: str) -> Generator[FirmwareItem, None, None]:
-        product_dictionaries = list()
+    def parse_versions(self, response: Response, device_name: str) -> Generator[FirmwareItem, None, None]:
         for version in response.xpath(self.x_path['firmware']).extract():
-            for firmware in re.findall(r'.*(Ver\..*href=".*/firmware/.*").*', version):
-                if re.match(r'.*href=".+(\.img|\.bin)".*', firmware):
-                    meta_data = self.prepare_meta_data(firmware=firmware, device_name=device_name, device_class=self.map_device_class(device_name))
-                    if meta_data not in product_dictionaries:
-                        product_dictionaries.append(meta_data)
-                        yield from self.prepare_item_pipeline(meta_data=meta_data)
+            yield from self.parse_firmware(device_name=device_name, version=version)
+
+    def parse_firmware(self, device_name: str, version: str):
+        product_dictionaries = list()
+        for firmware in re.findall(r'.*(Ver\..*href=".*/firmware/.*").*', version):
+            if re.match(r'.*href=".+(\.img|\.bin)".*', firmware):
+                meta_data = self.prepare_meta_data(firmware=firmware, device_name=device_name, device_class=self.map_device_class(device_name))
+                if meta_data not in product_dictionaries:
+                    product_dictionaries.append(meta_data)
+                    yield from self.prepare_item_pipeline(meta_data=meta_data)
 
     @staticmethod
     def prepare_item_pipeline(meta_data: dict) -> Generator[FirmwareItem, None, None]:
