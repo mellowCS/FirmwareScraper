@@ -15,7 +15,7 @@ class FirmwarePipeline(object):
         return request.url.split('/')[-1]
 
 
-class AsusPipeline(FilesPipeline):
+class HpPipeline(FilesPipeline):
 
     def file_path(self, request, response=None, info=None):
         return request.url.split('/')[-1]
