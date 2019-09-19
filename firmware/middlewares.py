@@ -99,8 +99,8 @@ class FirmwareDownloaderMiddleware(object):
             return None
         self.driver.get(request.url)
 
-        if "asus" in request.meta:
-            body = self.asus_processor()
+        if "hp" in request.meta:
+            body = self.hp_processor()
         else:
             sleep(2)
             body = str.encode(self.driver.page_source)
@@ -120,18 +120,42 @@ class FirmwareDownloaderMiddleware(object):
         # else:
         #    return None
 
-    def asus_processor(self):
-        try:
-            self.wait.until(
-                EC.presence_of_element_located((By.LINK_TEXT, 'DOWNLOAD')))
-
-        except TimeoutException:
-            print("No DOWNLOAD Field accessible for " + self.driver.current_url,
-                  "Stop processing of " + self.driver.current_url)
+    def hp_processor(self):
+        self.driver.fullscreen_window()
+        if self.driver.find_element_by_xpath('//h1').text == 'Oops!':
+            print(self.driver.current_url, 'Page Not Found - no firmware to find here')
+            raise IgnoreRequest
+        if 'Error 404' in self.driver.page_source:
+            print(self.driver.current_url, 'Page Not Found - no firmware to find here')
             raise IgnoreRequest
 
-        finally:
-            return str.encode(self.driver.page_source)
+        element = self.wait.until(EC.element_to_be_clickable((By.LINK_TEXT, 'Australia')))
+        element.click()
+        try:
+            self.wait.until(EC.invisibility_of_element_located(element))
+        except TimeoutException:
+            element.click()
+            pass
+
+        if self.wait.until(EC.element_to_be_clickable((By.ID, 'SelectDiffOS'))):
+            self.driver.find_element_by_id('SelectDiffOS').click()
+            self.wait.until(EC.element_to_be_clickable((By.ID, 'platform_dd_headerLink'))).click()
+
+            for element in self.driver.find_elements_by_xpath("//ul[@id='platform_dd_list']/li"):
+                if element.text == 'OS Independent':
+                    element.click()
+                    break
+        self.driver.find_element_by_id('versionnew_dd_headerValue').click()
+        for element in self.driver.find_elements_by_xpath('//ul[@id="versionnew_dd_list" and @class="dropdown-menu"]/li'):
+            if element.text == 'OS Independent':
+                element.click()
+                break
+        element = self.driver.find_element_by_id('os-update')
+        element.click()
+        if self.wait.until(EC.invisibility_of_element_located(element)):
+            pass
+
+        return str.encode(self.driver.page_source)
 
     def process_response(self, request, response, spider):
         # Called with the response returned from the downloader.
