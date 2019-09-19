@@ -22,7 +22,7 @@ class AvmSpider(Spider):
     ]
 
     def parse(self, response: Response) -> Generator[Request, None, None]:
-        for product_url in self.extract_links(response=response, prefix=('beta', 'tools', 'license', '..')):
+        for product_url in self.extract_links(response=response, ignore=('beta', 'tools', 'license', '..')):
             yield Request(url=product_url, callback=self.parse_product)
 
     def parse_product(self, response: Response) -> Union[Generator[FirmwareItem, None, None], Generator[Request, None, None]]:
@@ -30,12 +30,12 @@ class AvmSpider(Spider):
         if path[-1] == 'fritz.os':
             yield from self.parse_firmware(response=response, device_name=path[-3])
         else:
-            for sub_directory in self.extract_links(response=response, prefix=('recover', '..')):
+            for sub_directory in self.extract_links(response=response, ignore=('recover', '..')):
                 yield Request(url=response.urljoin(sub_directory), callback=self.parse_product)
 
     def parse_firmware(self, response: Response, device_name: str) -> Generator[FirmwareItem, None, None]:
         release_dates = self.extract_dates(response)
-        for index, file_url in enumerate(self.extract_links(response=response, prefix='..')):
+        for index, file_url in enumerate(self.extract_links(response=response, ignore='..')):
             if file_url.endswith('.image'):
                 yield from self.prepare_item_pipeline(meta_data=self.prepare_meta_data(response=response, device_name=device_name, release_date=release_dates[index], file_url=file_url))
 
@@ -72,8 +72,8 @@ class AvmSpider(Spider):
             return 'Router'
 
     @staticmethod
-    def extract_links(response: Response, prefix: Union[str, tuple]) -> list:
-        return [response.urljoin(p) for p in response.xpath('//a/@href').extract() if not p.startswith(prefix)]
+    def extract_links(response: Response, ignore: Union[str, tuple]) -> list:
+        return [response.urljoin(p) for p in response.xpath('//a/@href').extract() if not p.startswith(ignore)]
 
     def extract_dates(self, response: Response) -> list:
         release_dates = list()

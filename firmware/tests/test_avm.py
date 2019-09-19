@@ -129,7 +129,7 @@ def test_map_device_class(spider_instance, product, expected):
 
 @pytest.mark.parametrize('response, prefix, expected', [(MockResponse(url='/fritzbox/', body=PRODUCT_PAGE), ('beta', 'tools', 'license', '..'), ['/fritzbox/fritzbox-1234/'])])
 def test_extract_links(spider_instance, response, prefix, expected):
-    assert spider_instance.extract_links(response=response, prefix=prefix) == expected
+    assert spider_instance.extract_links(response=response, ignore=prefix) == expected
 
 
 @pytest.mark.parametrize('response, expected', [(MockResponse(url='/fritzbox/fritzbox-1234/other/fritz.os/', body=FIRWMARE_PAGE), ['12-08-2019', '13-09-2017'])])
