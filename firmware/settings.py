@@ -67,7 +67,7 @@ DOWNLOADER_MIDDLEWARES = {
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-    'firmware.pipelines.AsusPipeline': 300
+    'firmware.pipelines.HpPipeline': 300
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)
