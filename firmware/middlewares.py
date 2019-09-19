@@ -13,8 +13,9 @@ from selenium import webdriver
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException
 from selenium.webdriver.firefox.options import Log
+from time import sleep
 
 
 class FirmwareSpiderMiddleware(object):
@@ -74,17 +75,15 @@ class FirmwareDownloaderMiddleware(object):
         # init Firefox, maybe other Webdriver later
         options = webdriver.FirefoxOptions()
         options.headless = True
-        log = Log()
-        log.level = "TRACE"
-        options.add_argument(log.level)
         if driver_executable_path == None:
             print('Selenium driver path not set correctly')
             self.driver = None
         else:
             self.driver = webdriver.Firefox(
                 options=options,
-                executable_path=driver_executable_path
-            )
+                executable_path=driver_executable_path)
+            self.wait = WebDriverWait(self.driver, 15)
+
 
     @classmethod
     def from_crawler(cls, crawler):
@@ -100,23 +99,18 @@ class FirmwareDownloaderMiddleware(object):
             return None
         self.driver.get(request.url)
 
-        try:
-            element = WebDriverWait(self.driver, 15).until(
-                EC.presence_of_element_located((By.LINK_TEXT, "DOWNLOAD"))
-            )
-        except TimeoutException as ex:
-            print(ex, "No DOWNLOAD Field accessible for " + request.url, "Stop processing of " + request.url)
-            raise IgnoreRequest
-
-        finally:
+        if "asus" in request.meta:
+            body = self.asus_processor()
+        else:
+            sleep(2)
             body = str.encode(self.driver.page_source)
 
         return HtmlResponse(
             self.driver.current_url,
             body=body,
             encoding='utf-8',
-            request=request
-        )
+            request=request)
+
         # Must either:
         # - return None: continue processing this request
         # - or return a Response object
@@ -126,6 +120,18 @@ class FirmwareDownloaderMiddleware(object):
         # else:
         #    return None
 
+    def asus_processor(self):
+        try:
+            self.wait.until(
+                EC.presence_of_element_located((By.LINK_TEXT, 'DOWNLOAD')))
+
+        except TimeoutException:
+            print("No DOWNLOAD Field accessible for " + self.driver.current_url,
+                  "Stop processing of " + self.driver.current_url)
+            raise IgnoreRequest
+
+        finally:
+            return str.encode(self.driver.page_source)
 
     def process_response(self, request, response, spider):
         # Called with the response returned from the downloader.
