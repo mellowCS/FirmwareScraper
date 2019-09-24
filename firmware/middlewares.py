@@ -58,8 +58,8 @@ class FirmwareSpiderMiddleware(object):
         # that it doesn’t have a response associated.
 
         # Must return only requests (not items).
-        for r in start_requests:
-            yield r
+        for request in start_requests:
+            yield request
 
     def spider_opened(self, spider):
         spider.logger.info('Spider opened: %s' % spider.name)
