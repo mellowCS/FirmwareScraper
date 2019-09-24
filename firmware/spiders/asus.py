@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 
-from scrapy import Spider
-from firmware.items import FirmwareItem
-from scrapy.loader import ItemLoader
-# -*- coding: utf-8 -*-
-from scrapy.http import Request
 from bs4 import BeautifulSoup
-# from ..driver import FACT_Dictionary
+
+from scrapy import Spider
+from scrapy.http import Request
+from scrapy.loader import ItemLoader
+
+from firmware.items import FirmwareItem
+
 
 class AsusSpider(Spider):
     name = 'asus'
@@ -32,7 +33,6 @@ class AsusSpider(Spider):
         base_url % 'Commercial-Servers-Workstations'
     ]
 
-    # todo eventuell Source Code?
     def parse(self, response):
         for product_anchor in response.xpath('//div[@class="product_level_1"]/table/tbody/tr/td/ul/li/a').getall():
             product_name, product_link = self.extract_anchor_attributes(product_anchor)
@@ -51,7 +51,6 @@ class AsusSpider(Spider):
             )
 
     def parse_firmware(self, response, product_name):
-        # firmware: 'https://www.asus.com/Networking/RT-AX88U/HelpDesk_BIOS/'
         meta_data = self.prepare_meta_data(response, product_name)
         return self.prepare_item_pipeline(meta_data=meta_data)
 
