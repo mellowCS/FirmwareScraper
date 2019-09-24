@@ -37,8 +37,18 @@ git clone https://github.com/mellowCS/FirmwareScraper.git
 To run a spider, just go into the project's folder and type the following command into the terminal:
 
 ```
-scrapy crawl *name of spider*
+scrapy crawl *name of spider e.g. avm* -o *name of file to output metadata e.g. spidername.json*
 ```
+
+### Selenium
+
+For selenium to be able to render the desired page you need a driver executable (geckodriver, chromedriver etc.) to be in the correct path in the settings.py.
+
+```
+SELENIUM_DRIVER_EXECUTABLE_PATH = '/home/username/driver/geckodriver'
+```
+
+For more information about the installation process of selenium, [see here.](https://selenium-python.readthedocs.io/installation.html)
 
 ## Developer
 
