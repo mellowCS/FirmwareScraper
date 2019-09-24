@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
+from datetime import datetime
+from re import search
 
 from scrapy import Spider
-from firmware.items import FirmwareItem
-from scrapy.loader import ItemLoader
 from scrapy.http import Request
-from re import search
+from scrapy.loader import ItemLoader
+from firmware.items import FirmwareItem
 
 
 class HewlettPackardSpider(Spider):
@@ -30,8 +31,8 @@ class HewlettPackardSpider(Spider):
                           meta={'selenium': True, 'dont_redirect': True, 'handle_httpstatus_list': [302], 'hp': True})
 
     def parse_firmware(self, response, meta_data):
-        meta_data['file_urls'] = response.xpath('//a[@class="button-sm primary hpdiaButton desktopHpdia"]/@href').getall()
-        # meta_data['device_name'] = response.xpath('//div[@class="header-title"]/h2/text()').get()
+        meta_data['file_urls'] = response.xpath(
+            '//a[@class="button-sm primary hpdiaButton desktopHpdia"]/@href').getall()
         return self.prepare_item_pipeline(response, meta_data)
 
     @staticmethod
@@ -50,8 +51,7 @@ class HewlettPackardSpider(Spider):
     @staticmethod
     def prepare_meta_data(table_row):
         release_date = table_row.xpath('td')[3].xpath('div/text()').get()
-        release_date = release_date[:4] + "-" + release_date[4:6] + "-" + release_date[6:]
-
+        release_date = datetime.strptime(release_date, '%Y%m%d').date().isoformat()
         device_name = table_row.xpath('td')[0].xpath('div').get()
         device_name = search(r'</a> ?(.*?)</div>', device_name).group(1)
 
@@ -59,4 +59,3 @@ class HewlettPackardSpider(Spider):
             'vendor': 'HP', 'device_class': 'Printer', 'device_name': device_name,
             'release_date': release_date,
             'firmware_version': table_row.xpath('td')[2].xpath('div/text()').get()}
-
