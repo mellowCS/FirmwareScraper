@@ -1,21 +1,16 @@
 # -*- coding: utf-8 -*-
 
-# Define here the models for your spider middleware
-#
-# See documentation in:
-# https://docs.scrapy.org/en/latest/topics/spider-middleware.html
+from time import sleep
 
 from scrapy import signals
-from scrapy.http import HtmlResponse
 from scrapy.exceptions import IgnoreRequest
+from scrapy.http import HtmlResponse
 
 from selenium import webdriver
-from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException
-from selenium.webdriver.firefox.options import Log
-from time import sleep
 
 
 class FirmwareSpiderMiddleware(object):
@@ -26,9 +21,9 @@ class FirmwareSpiderMiddleware(object):
     @classmethod
     def from_crawler(cls, crawler):
         # This method is used by Scrapy to create your spiders.
-        s = cls()
-        crawler.signals.connect(s.spider_opened, signal=signals.spider_opened)
-        return s
+        settings = cls()
+        crawler.signals.connect(settings.spider_opened, signal=signals.spider_opened)
+        return settings
 
     def process_spider_input(self, response, spider):
         # Called for each response that goes through the spider
@@ -59,8 +54,8 @@ class FirmwareSpiderMiddleware(object):
         # that it doesn’t have a response associated.
 
         # Must return only requests (not items).
-        for r in start_requests:
-            yield r
+        for request in start_requests:
+            yield request
 
     def spider_opened(self, spider):
         spider.logger.info('Spider opened: %s' % spider.name)
@@ -72,16 +67,13 @@ class FirmwareDownloaderMiddleware(object):
     # passed objects.
 
     def __init__(self, driver_executable_path=None):
-        # init Firefox, maybe other Webdriver later
         options = webdriver.FirefoxOptions()
         options.headless = True
-        if driver_executable_path == None:
+        if driver_executable_path is None:
             print('Selenium driver path not set correctly')
             self.driver = None
         else:
-            self.driver = webdriver.Firefox(
-                options=options,
-                executable_path=driver_executable_path)
+            self.driver = webdriver.Firefox(options=options, executable_path=driver_executable_path)
             self.wait = WebDriverWait(self.driver, 15)
 
 
@@ -89,10 +81,10 @@ class FirmwareDownloaderMiddleware(object):
     def from_crawler(cls, crawler):
         # This method is used by Scrapy to create your spiders.
         driver_executable_path = crawler.settings.get('SELENIUM_DRIVER_EXECUTABLE_PATH')
-        s = cls(driver_executable_path=driver_executable_path)
-        crawler.signals.connect(s.spider_opened, signal=signals.spider_opened)
+        settings = cls(driver_executable_path=driver_executable_path)
+        crawler.signals.connect(settings.spider_opened, signal=signals.spider_opened)
 
-        return s
+        return settings
 
     def process_request(self, request, spider):
         if "selenium" not in request.meta:
@@ -105,11 +97,7 @@ class FirmwareDownloaderMiddleware(object):
             sleep(2)
             body = str.encode(self.driver.page_source)
 
-        return HtmlResponse(
-            self.driver.current_url,
-            body=body,
-            encoding='utf-8',
-            request=request)
+        return HtmlResponse(self.driver.current_url, body=body, encoding='utf-8', request=request)
 
         # Must either:
         # - return None: continue processing this request
@@ -123,7 +111,7 @@ class FirmwareDownloaderMiddleware(object):
     def asus_processor(self):
         try:
             self.wait.until(
-                EC.presence_of_element_located((By.LINK_TEXT, 'DOWNLOAD')))
+                expected_conditions.presence_of_element_located((By.LINK_TEXT, 'DOWNLOAD')))
 
         except TimeoutException:
             print("No DOWNLOAD Field accessible for " + self.driver.current_url,
