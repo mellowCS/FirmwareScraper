@@ -4,18 +4,17 @@
 #
 # See documentation in:
 # https://docs.scrapy.org/en/latest/topics/spider-middleware.html
+from time import sleep
 
 from scrapy import signals
-from scrapy.http import HtmlResponse
 from scrapy.exceptions import IgnoreRequest
+from scrapy.http import HtmlResponse
 
 from selenium import webdriver
-from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException
-from selenium.webdriver.firefox.options import Log
-from time import sleep
 
 
 class FirmwareSpiderMiddleware(object):
@@ -75,41 +74,35 @@ class FirmwareDownloaderMiddleware(object):
         # init Firefox, maybe other Webdriver later
         options = webdriver.FirefoxOptions()
         options.headless = True
-        if driver_executable_path == None:
+        if driver_executable_path is None:
             print('Selenium driver path not set correctly')
             self.driver = None
         else:
-            self.driver = webdriver.Firefox(
-                options=options,
-                executable_path=driver_executable_path)
+            self.driver = webdriver.Firefox(options=options, executable_path=driver_executable_path)
             self.wait = WebDriverWait(self.driver, 15)
-
 
     @classmethod
     def from_crawler(cls, crawler):
         # This method is used by Scrapy to create your spiders.
         driver_executable_path = crawler.settings.get('SELENIUM_DRIVER_EXECUTABLE_PATH')
-        s = cls(driver_executable_path=driver_executable_path)
-        crawler.signals.connect(s.spider_opened, signal=signals.spider_opened)
+        settings = cls(driver_executable_path=driver_executable_path)
+        crawler.signals.connect(settings.spider_opened, signal=signals.spider_opened)
 
-        return s
+        return settings
 
     def process_request(self, request, spider):
-        if "selenium" not in request.meta:
+
+        if 'selenium' not in request.meta:
             return None
         self.driver.get(request.url)
 
-        if "hp" in request.meta:
+        if 'hp' in request.meta:
             body = self.hp_processor()
         else:
             sleep(2)
             body = str.encode(self.driver.page_source)
 
-        return HtmlResponse(
-            self.driver.current_url,
-            body=body,
-            encoding='utf-8',
-            request=request)
+        return HtmlResponse(self.driver.current_url, body=body, encoding='utf-8', request=request)
 
         # Must either:
         # - return None: continue processing this request
@@ -122,40 +115,51 @@ class FirmwareDownloaderMiddleware(object):
 
     def hp_processor(self):
         self.driver.fullscreen_window()
-        if self.driver.find_element_by_xpath('//h1').text == 'Oops!':
-            print(self.driver.current_url, 'Page Not Found - no firmware to find here')
-            raise IgnoreRequest
-        if 'Error 404' in self.driver.page_source:
-            print(self.driver.current_url, 'Page Not Found - no firmware to find here')
+        self.handle_404()
+        self.choose_country()
+        self.choose_os()
+        self.choose_version()
+        self.update_os_version()
+
+        return str.encode(self.driver.page_source)
+
+    def handle_404(self):
+        if 'Oops!' in self.driver.find_element_by_xpath('//h1').text or 'Error 404' in self.driver.page_source:
+            print(self.driver.current_url, ': 404 Page Not Found - no firmware to find here')
             raise IgnoreRequest
 
-        element = self.wait.until(EC.element_to_be_clickable((By.LINK_TEXT, 'Australia')))
+    def choose_country(self):
+        element = self.wait.until(expected_conditions.element_to_be_clickable((By.LINK_TEXT, 'Australia')))
         element.click()
         try:
-            self.wait.until(EC.invisibility_of_element_located(element))
+            self.wait.until(expected_conditions.invisibility_of_element_located(element))
         except TimeoutException:
             element.click()
             pass
 
-        if self.wait.until(EC.element_to_be_clickable((By.ID, 'SelectDiffOS'))):
+    def choose_os(self):
+        if self.wait.until(expected_conditions.element_to_be_clickable((By.ID, 'SelectDiffOS'))):
             self.driver.find_element_by_id('SelectDiffOS').click()
-            self.wait.until(EC.element_to_be_clickable((By.ID, 'platform_dd_headerLink'))).click()
+            self.wait.until(expected_conditions.element_to_be_clickable((By.ID, 'platform_dd_headerLink'))).click()
 
-            for element in self.driver.find_elements_by_xpath("//ul[@id='platform_dd_list']/li"):
+            for element in self.driver.find_elements_by_xpath('//ul[@id="platform_dd_list"]/li'):
                 if element.text == 'OS Independent':
                     element.click()
                     break
+
+    def choose_version(self):
         self.driver.find_element_by_id('versionnew_dd_headerValue').click()
-        for element in self.driver.find_elements_by_xpath('//ul[@id="versionnew_dd_list" and @class="dropdown-menu"]/li'):
+        for element in self.driver.find_elements_by_xpath(
+                '//ul[@id="versionnew_dd_list" and @class="dropdown-menu"]/li'):
             if element.text == 'OS Independent':
                 element.click()
                 break
+
+    def update_os_version(self):
         element = self.driver.find_element_by_id('os-update')
         element.click()
-        if self.wait.until(EC.invisibility_of_element_located(element)):
+        if self.wait.until(expected_conditions.invisibility_of_element_located(element)):
             pass
-
-        return str.encode(self.driver.page_source)
 
     def process_response(self, request, response, spider):
         # Called with the response returned from the downloader.
