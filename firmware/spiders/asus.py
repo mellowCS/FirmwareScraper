@@ -13,24 +13,24 @@ class AsusSpider(Spider):
     name = 'asus'
     manufacturer = 'ASUS'
     device_dictionary = dict(
-        gt="Router (Home)",  # Gaming
-        rt="Router (Home)",
-        rp="Repeater",
-        ea="Access Point",
-        ly="Router (Home)",  # Mesh
-        bl="Router (Home)",  # Mesh
-        ds="Router (Modem)",  # Modem
-        pc="PCIe-Networkcard",
-        us="USB-Networkcard",
-        bt="Bluetooth-Adapter",
-        br="Router (Business)"
+        gt='Router (Home)',  # Gaming
+        rt='Router (Home)',
+        rp='Repeater',
+        ea='Access Point',
+        ly='Router (Home)',  # Mesh
+        bl='Router (Home)',  # Mesh
+        ds='Router (Modem)',  # Modem
+        pc='PCIe-Networkcard',
+        us='USB-Networkcard',
+        bt='Bluetooth-Adapter',
+        br='Router (Business)'
     )
-    base_url = 'https://www.asus.com/de/%s/AllProducts/'
+    base_url = 'https://www.asus.com/de/{0}/AllProducts/'
     start_urls = [
-        base_url % 'Networking',
-        base_url % 'Motherboards',
-        base_url % 'Commercial-Gaming-Station',
-        base_url % 'Commercial-Servers-Workstations'
+        base_url.format('Networking'),
+        base_url.format('Motherboards'),
+        base_url.format('Commercial-Gaming-Station'),
+        base_url.format('Commercial-Servers-Workstations')
     ]
 
     def parse(self, response):
@@ -74,11 +74,12 @@ class AsusSpider(Spider):
             'device_name': product_name,
             'firmware_version': self.extract_firmware_version(response),
             'device_class': self.extract_device_class(response.url, product_name),
-            'file_urls': response.xpath('//div[@class="download-inf-r"]/a/@href').get()}
+            'file_urls': response.xpath('//div[@class="download-inf-r"]/a/@href').get()
+        }
 
     @staticmethod
     def extract_anchor_attributes(product_anchor):
-        soup = BeautifulSoup(product_anchor, "lxml")
+        soup = BeautifulSoup(product_anchor, 'lxml')
         product_link = soup.a.get('href')
         product_name = soup.a.get_text()
         if 'ROG Rapture' in product_name:
@@ -107,15 +108,9 @@ class AsusSpider(Spider):
 
     def extract_device_class(self, response_url, product_name):
         if 'Motherboards' in response_url:
-            device_class = 'Motherboard'
-
-        elif 'Commercial-Gaming-Station' in response_url:
-            device_class = 'BIOS'
-
-        elif 'Networking' in response_url:
-            if product_name[:2].lower() in self.device_dictionary:
-                device_class = self.device_dictionary[product_name[:2].lower()]
-        else:
-            device_class = None
-
-        return device_class
+            return 'Motherboard'
+        if 'Commercial' in response_url:
+            return 'BIOS'
+        if product_name[:2].lower() in self.device_dictionary:
+            return self.device_dictionary[product_name[:2].lower()]
+        return None  # Networking
