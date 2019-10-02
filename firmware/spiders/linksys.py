@@ -1,6 +1,6 @@
 import re
-from typing import Generator
 from datetime import datetime
+from typing import Generator
 
 from scrapy import Request, Spider
 from scrapy.http import Response
