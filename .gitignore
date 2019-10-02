@@ -1,0 +1,7 @@
+*.log
+*.pyc
+.cache
+.idea
+.project
+.pytest_cache
+__pycache__
