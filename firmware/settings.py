@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 
 # Scrapy settings for firmware project
 #
@@ -28,6 +27,7 @@ ROBOTSTXT_OBEY = True
 # See https://docs.scrapy.org/en/latest/topics/settings.html#download-delay
 # See also autothrottle settings and docs
 #DOWNLOAD_DELAY = 3
+DOWNLOAD_TIMEOUT = 320
 # The download delay setting will honor only one of:
 #CONCURRENT_REQUESTS_PER_DOMAIN = 16
 #CONCURRENT_REQUESTS_PER_IP = 16
@@ -64,9 +64,11 @@ ROBOTSTXT_OBEY = True
 
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
-#ITEM_PIPELINES = {
-#    'firmware.pipelines.FirmwarePipeline': 300,
-#}
+ITEM_PIPELINES = {
+    'firmware.pipelines.AvmPipeline': 1,
+}
+
+FILES_STORE = 'firmware_files/'
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html
