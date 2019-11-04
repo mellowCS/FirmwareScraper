@@ -49,7 +49,9 @@ For selenium to be able to render the desired page you need a driver executable 
 SELENIUM_DRIVER_EXECUTABLE_PATH = '/home/username/driver/geckodriver'
 ```
 
-For more information about the installation process of selenium, [see here.](https://selenium-python.readthedocs.io/installation.html)
+For more information about the installation process of selenium, [see here](https://selenium-python.readthedocs.io/installation.html).
+
+To get the supported drivers for selenium [see here](https://selenium.dev/selenium/docs/api/py/).
 
 ### Beautiful Soup
 Some spiders use Beautiful Soup to search for attributes in a webpage. 
