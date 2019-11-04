@@ -1,7 +1,7 @@
 import pytest
 
-import linksys
-from mock_classes import MockResponse, MockRequest
+from firmware.spiders import linksys
+from firmware.tests.mock_classes import MockRequest, MockResponse
 
 PRODUCT_LIST_PAGE = u'''<!DOCTYPE html>
                         <html>
@@ -216,4 +216,3 @@ def test_map_device_class(spider_instance, product, exception, expected):
             spider_instance.map_device_class(product=product)
     else:
         assert spider_instance.map_device_class(product=product) == expected
-
