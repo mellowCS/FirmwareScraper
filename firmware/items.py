@@ -8,6 +8,5 @@ class FirmwareItem(Item):
     device_class = Field(default=None)
     release_date = Field(default=None)
 
-    # used by FilesPipeline
     files = Field()
     file_urls = Field()
