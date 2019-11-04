@@ -1,4 +1,4 @@
-from scrapy.item import Item, Field
+from scrapy.item import Field, Item
 
 
 class FirmwareItem(Item):

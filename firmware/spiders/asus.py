@@ -1,5 +1,4 @@
 from bs4 import BeautifulSoup
-
 from scrapy import Spider
 from scrapy.http import Request
 from scrapy.loader import ItemLoader
@@ -23,7 +22,7 @@ class AsusSpider(Spider):
         bt='Bluetooth-Adapter',
         br='Router (Business)'
     )
-    base_url = 'https://www.asus.com/de/{0}/AllProducts/'
+    base_url = 'https://www.asus.com/de/{   0}/AllProducts/'
     start_urls = [
         base_url.format('Networking'),
         base_url.format('Motherboards'),
