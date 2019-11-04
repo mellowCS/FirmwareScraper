@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 
 # Scrapy settings for firmware project
 #
@@ -66,6 +65,7 @@ DOWNLOAD_TIMEOUT = 320
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
+    'firmware.pipelines.AvmPipeline': 1,
     'firmware.pipelines.LinksysPipeline': 1,
 }
 
