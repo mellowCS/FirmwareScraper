@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from time import sleep
 
 from scrapy import signals
