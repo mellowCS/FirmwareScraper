@@ -1,10 +1,18 @@
 from scrapy.pipelines.files import FilesPipeline
 
 
-class LinksysPipeline(FilesPipeline):
+class FirmwarePipeline(FilesPipeline):
     def file_path(self, request, response=None, info=None):
         return request.url.split('/')[-1]
 
 
-class AvmPipeline(LinksysPipeline):
+class HpPipeline(FirmwarePipeline):
+    pass
+
+
+class LinksysPipeline(FirmwarePipeline):
+    pass
+
+
+class AvmPipeline(FirmwarePipeline):
     pass

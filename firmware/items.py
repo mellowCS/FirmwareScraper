@@ -1,12 +1,12 @@
-from scrapy import Field, Item
+from scrapy.item import Field, Item
 
 
 class FirmwareItem(Item):
-    vendor = Field()
-    device_name = Field()
-    firmware_version = Field()
-    device_class = Field()
-    release_date = Field()
+    vendor = Field(default=None)
+    device_name = Field(default=None)
+    firmware_version = Field(default=None)
+    device_class = Field(default=None)
+    release_date = Field(default=None)
 
-    file_urls = Field()
     files = Field()
+    file_urls = Field()
