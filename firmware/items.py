@@ -9,6 +9,11 @@ import scrapy
 
 
 class FirmwareItem(scrapy.Item):
-    # define the fields for your item here like:
-    # name = scrapy.Field()
-    pass
+    vendor = scrapy.Field()
+    device_name = scrapy.Field()
+    firmware_version = scrapy.Field()
+    device_class = scrapy.Field()
+    release_date = scrapy.Field()
+
+    file_urls = scrapy.Field()
+    files = scrapy.Field()
