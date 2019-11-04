@@ -1,6 +1,6 @@
 from calendar import month_abbr
 from re import search
-from typing import Union, Generator
+from typing import Generator, Union
 
 from scrapy import Request, Spider
 from scrapy.http import Response

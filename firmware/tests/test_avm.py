@@ -1,7 +1,7 @@
 import pytest
 
-import avm
-from mock_classes import MockResponse, MockRequest
+from firmware.spiders import avm
+from firmware.tests.mock_classes import MockRequest, MockResponse
 
 PRODUCT_PAGE = u'''<html lang="en">
                        <head>
