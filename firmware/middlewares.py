@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from os.path import isfile
 from time import sleep
 
@@ -42,7 +41,6 @@ class FirmwareSpiderMiddleware(object):
 class FirmwareDownloaderMiddleware(object):
 
     def __init__(self, driver_executable_path=None):
-        # init Firefox, maybe other Webdriver later
         options = webdriver.FirefoxOptions()
         options.headless = True
         if isfile(driver_executable_path):
