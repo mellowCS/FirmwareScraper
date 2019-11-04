@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from os import getcwd
 # Scrapy settings for firmware project
 #
 # For simplicity, this file contains only settings considered important or
@@ -93,4 +92,4 @@ ITEM_PIPELINES = {
 
 # Enable to run with Selenium
 # Set to the driver executable path
-SELENIUM_DRIVER_EXECUTABLE_PATH = getcwd() + '/firmware/driver/geckodriver'
+#SELENIUM_DRIVER_EXECUTABLE_PATH = ''
