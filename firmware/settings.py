@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
 from os import getcwd
+
 # Scrapy settings for firmware project
 #
 # For simplicity, this file contains only settings considered important or
@@ -30,6 +30,7 @@ ROBOTSTXT_OBEY = True
 # See https://docs.scrapy.org/en/latest/topics/settings.html#download-delay
 # See also autothrottle settings and docs
 #DOWNLOAD_DELAY = 3
+DOWNLOAD_TIMEOUT = 320
 # The download delay setting will honor only one of:
 #CONCURRENT_REQUESTS_PER_DOMAIN = 16
 #CONCURRENT_REQUESTS_PER_IP = 16
@@ -67,8 +68,11 @@ DOWNLOADER_MIDDLEWARES = {
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-    'firmware.pipelines.HpPipeline': 300
+    'firmware.pipelines.HpPipeline': 300,
+    'firmware.pipelines.LinksysPipeline': 1
 }
+
+FILES_STORE = 'firmware_files/'
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html
