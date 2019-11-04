@@ -37,7 +37,7 @@ class AvmSpider(Spider):
         release_dates = self.extract_dates(response)
         for index, file_url in enumerate(self.extract_links(response=response, ignore='..')):
             if file_url.endswith('.image'):
-                yield from self.prepare_item_pipeline(meta_data=self.prepare_meta_data(response=response, device_name=device_name, release_date=release_dates[index], file_url=file_url))
+                yield from self.prepare_item_pipeline(meta_data=self.prepare_meta_data(device_name=device_name, release_date=release_dates[index], file_url=file_url))
 
     @staticmethod
     def prepare_item_pipeline(meta_data: dict) -> Generator[FirmwareItem, None, None]:
@@ -50,7 +50,7 @@ class AvmSpider(Spider):
         loader.add_value('release_date', meta_data['release_date'])
         yield loader.load_item()
 
-    def prepare_meta_data(self, response: Response, device_name: str, release_date: str, file_url: str) -> dict:
+    def prepare_meta_data(self, device_name: str, release_date: str, file_url: str) -> dict:
         return {
             'file_urls': [file_url],
             'vendor': 'AVM',
@@ -64,12 +64,11 @@ class AvmSpider(Spider):
     def map_device_class(product: str) -> str:
         if product.startswith(('fritzrepeater', 'fritzwlan-repeater')):
             return 'Repeater'
-        elif product.startswith('fritzwlan-usb'):
+        if product.startswith('fritzwlan-usb'):
             return 'Wifi-Stick'
-        elif product.startswith('fritzpowerline'):
+        if product.startswith('fritzpowerline'):
             return 'PLC Adapter'
-        else:
-            return 'Router'
+        return 'Router'
 
     @staticmethod
     def extract_links(response: Response, ignore: Union[str, tuple]) -> list:
@@ -93,19 +92,25 @@ class AvmSpider(Spider):
         return '-'.join(day_month_year)
 
     def extract_version(self, firmware: str, product_specifier: str) -> str:
-        if 'fritz.powerline' in firmware:
-            for hardware_number in self.permutations(array=product_specifier.split('-')[1:], prefix='', index=0):
-                matches = search(r'(?:' + r''.join(hardware_number.upper()) + r')_(.*).image', firmware)
-                if matches:
-                    return matches.group(1).replace('_', '.')
-        else:
+        try:
+            if 'fritz.powerline' in firmware:
+                return self.extract_powerline_version(firmware, product_specifier)
             return search(r'FRITZ\.(Box|Powerline|Repeater)_(\w+)(\.(\w{2}-)+\w{2}\.)?([-\.])?(.*)\.image', firmware).group(6)
+        except (AttributeError, IndexError, ValueError):
+            return '0.0'
 
-    def permutations(self, array: list, prefix: str, index: int) -> Generator[str, None, None]:
+    def extract_powerline_version(self, firmware, product_specifier):
+        for hardware_number in self.generate_permutations(array=product_specifier.split('-')[1:], prefix='', index=0):
+            matches = search(r'(?:' + r''.join(hardware_number.upper()) + r')_(.*).image', firmware)
+            if matches:
+                return matches.group(1).replace('_', '.')
+        raise ValueError('No version found in firmware string')
+
+    def generate_permutations(self, array: list, prefix: str, index: int) -> Generator[str, None, None]:
         if index < len(array) - 1:
-            for result in self.permutations(array=array, prefix=prefix + array[index] + '_', index=index + 1):
+            for result in self.generate_permutations(array=array, prefix=prefix + array[index] + '_', index=index + 1):
                 yield result
-            for result in self.permutations(array=array, prefix=prefix + array[index], index=index + 1):
+            for result in self.generate_permutations(array=array, prefix=prefix + array[index], index=index + 1):
                 yield result
         else:
             yield prefix + array[index]
