@@ -1,7 +1,4 @@
-# -*- coding: utf-8 -*-
-
 from bs4 import BeautifulSoup
-
 from scrapy import Spider
 from scrapy.http import Request
 from scrapy.loader import ItemLoader
@@ -25,7 +22,7 @@ class AsusSpider(Spider):
         bt='Bluetooth-Adapter',
         br='Router (Business)'
     )
-    base_url = 'https://www.asus.com/de/{0}/AllProducts/'
+    base_url = 'https://www.asus.com/de/{}/AllProducts/'
     start_urls = [
         base_url.format('Networking'),
         base_url.format('Motherboards'),
@@ -52,7 +49,8 @@ class AsusSpider(Spider):
 
     def parse_firmware(self, response, product_name):
         meta_data = self.prepare_meta_data(response, product_name)
-        return self.prepare_item_pipeline(response, meta_data=meta_data)
+
+        return self.prepare_item_pipeline(response=response, meta_data=meta_data)
 
     @staticmethod
     def prepare_item_pipeline(response, meta_data):
