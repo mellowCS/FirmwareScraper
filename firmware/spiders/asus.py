@@ -2,6 +2,7 @@ from bs4 import BeautifulSoup
 from scrapy import Spider
 from scrapy.http import Request
 from scrapy.loader import ItemLoader
+from scrapy.exceptions import NotSupported
 
 from firmware.items import FirmwareItem
 
@@ -49,7 +50,8 @@ class AsusSpider(Spider):
 
     def parse_firmware(self, response, product_name):
         meta_data = self.prepare_meta_data(response, product_name)
-
+        if meta_data['file_urls'] is None:
+            raise NotSupported
         return self.prepare_item_pipeline(response=response, meta_data=meta_data)
 
     @staticmethod
@@ -61,7 +63,7 @@ class AsusSpider(Spider):
         item_loader_class.add_value('firmware_version', meta_data['firmware_version'])
         item_loader_class.add_value('device_class', meta_data['device_class'])
         item_loader_class.add_value('release_date', meta_data['release_date'])
-        item_loader_class.add_value("file_urls", meta_data['file_urls'])
+        item_loader_class.add_value('file_urls', meta_data['file_urls'])
 
         return item_loader_class.load_item()
 
@@ -89,8 +91,7 @@ class AsusSpider(Spider):
     def extract_firmware_version(response):
         firmware_version = response.xpath('//span[@class="version"]/text()').get()
         if not firmware_version:
-            firmware_version = None
-
+            return None
         beta_attribute = response.xpath('//span[@class="beta"]/text()').get()
         if beta_attribute is not None:
             firmware_version = firmware_version + '-beta'
@@ -101,7 +102,7 @@ class AsusSpider(Spider):
     def extract_release_date(response):
         release_date = response.xpath('//span[@class="lastdate"]/text()').get()
         if not release_date:
-            release_date = None
+            return None
 
         return release_date.replace('/', '-')
 
@@ -112,4 +113,4 @@ class AsusSpider(Spider):
             return 'BIOS'
         if product_name[:2].lower() in self.device_dictionary:
             return self.device_dictionary[product_name[:2].lower()]
-        return None  # Networking
+        return None  # undefined
