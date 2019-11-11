@@ -52,7 +52,7 @@ class AsusSpider(Spider):
 
     def parse_firmware(self, response, product_name):
         meta_data = self.prepare_meta_data(response, product_name)
-        return self.prepare_item_pipeline(meta_data=meta_data)
+        return self.prepare_item_pipeline(response, meta_data=meta_data)
 
     @staticmethod
     def prepare_item_pipeline(response, meta_data):
@@ -93,7 +93,8 @@ class AsusSpider(Spider):
         if not firmware_version:
             firmware_version = None
 
-        if 'Beta' in response.xpath('//span[@class="beta"]/text()').get():
+        beta_attribute = response.xpath('//span[@class="beta"]/text()').get()
+        if beta_attribute is not None:
             firmware_version = firmware_version + '-beta'
 
         return firmware_version.replace('Version ', '').replace(' ', '_')
