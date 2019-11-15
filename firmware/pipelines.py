@@ -16,3 +16,7 @@ class LinksysPipeline(FirmwarePipeline):
 
 class AvmPipeline(FirmwarePipeline):
     pass
+
+
+class AsusPipeline(FirmwarePipeline):
+    pass

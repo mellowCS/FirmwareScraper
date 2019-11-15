@@ -18,6 +18,7 @@ DOWNLOADER_MIDDLEWARES = {
 
 ITEM_PIPELINES = {
     'firmware.pipelines.HpPipeline': 300,
+    'firmware.pipelines.AsusPipeline': 300,
     'firmware.pipelines.AvmPipeline': 1,
     'firmware.pipelines.LinksysPipeline': 1,
 }

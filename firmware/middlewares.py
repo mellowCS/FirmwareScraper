@@ -4,7 +4,6 @@ from time import sleep
 from scrapy import signals
 from scrapy.exceptions import IgnoreRequest
 from scrapy.http import HtmlResponse
-
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
@@ -43,6 +42,7 @@ class FirmwareDownloaderMiddleware(object):
     def __init__(self, driver_executable_path=None):
         options = webdriver.FirefoxOptions()
         options.headless = True
+
         if isfile(driver_executable_path):
             self.driver = webdriver.Firefox(options=options, executable_path=driver_executable_path)
             self.wait = WebDriverWait(self.driver, 15)
@@ -59,7 +59,6 @@ class FirmwareDownloaderMiddleware(object):
         return settings
 
     def process_request(self, request, spider):
-
         if 'selenium' not in request.meta:
             return None
         self.driver.get(request.url)
@@ -71,6 +70,18 @@ class FirmwareDownloaderMiddleware(object):
             body = str.encode(self.driver.page_source)
 
         return HtmlResponse(self.driver.current_url, body=body, encoding='utf-8', request=request)
+
+    def asus_processor(self):
+        try:
+            self.wait.until(
+                expected_conditions.presence_of_element_located((By.LINK_TEXT, 'DOWNLOAD'))
+            )
+        except TimeoutException:
+            print('No DOWNLOAD Field accessible for {}\nStop processing of {}'.format(self.driver.current_url, self.driver.current_url))
+            raise IgnoreRequest
+        finally:
+            return str.encode(self.driver.page_source)
+
 
     def hp_processor(self):
         self.driver.fullscreen_window()
