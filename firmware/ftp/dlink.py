@@ -13,44 +13,35 @@ class FTPClass:
 
     def main(self):
         print(self.ftp_client.login())
-        skip_first_parameters = 3
-        for (directory_name, _) in self.ftp_client.mlsd():
+        for (directory_name, _) in self.start_iteration():
             print(directory_name)
-            if skip_first_parameters == 0:
-                if directory_name in self.things_to_skip:
-                    continue
-                try:
-                    self.ftp_client.cwd(directory_name)
-                    self.maintain_directory_tree(directory_name)
-                    self.get_subpage()
-                    break
-                except error_perm:
-                    self.LOG(error_perm, directory_name)
-                    continue
-            else:
-                skip_first_parameters = skip_first_parameters - 1
-                pass
+            if directory_name in self.things_to_skip:
+                continue
+            try:
+                self.ftp_client.cwd(directory_name)
+                self.maintain_directory_tree(directory_name)
+                self.get_subpage()
+                break
+            except error_perm:
+                self.LOG(error_perm, directory_name)
+                continue
 
         self.ftp_client.close()
 
     def get_subpage(self):
         skip_first_parameters = 3
-        for (directory_name, _) in self.ftp_client.mlsd():
-            if skip_first_parameters == 0:
-                try:
-                    self.ftp_client.cwd(directory_name)
-                    self.maintain_directory_tree(directory_name)
-                    self.get_sub_subpage()
-                except error_perm:
-                    # trying to access file or permission denied
-                    self.LOG(error_perm, directory_name)
-                    continue
-            else:
-                skip_first_parameters = skip_first_parameters - 1
-                pass
+        for (directory_name, _) in self.start_iteration():
+            try:
+                self.ftp_client.cwd(directory_name)
+                self.maintain_directory_tree(directory_name)
+                self.get_sub_subpage()
+            except error_perm:
+                # trying to access file or permission denied
+                self.LOG(error_perm, directory_name)
+                continue
 
     def get_sub_subpage(self):
-        for (directory, _) in self.ftp_client.mlsd():
+        for (directory, _) in self.start_iteration():
             # archive, documentation, driver_software
             if 'driver_software' == directory:
                 self.ftp_client.cwd(directory)
@@ -58,7 +49,7 @@ class FTPClass:
 
     def get_directory(self):
 
-        for (file_name, file_details) in self.ftp_client.mlsd():
+        for (file_name, file_details) in self.start_iteration():
             # skip the file, if it ends with 'pdf' or 'txt'
             if re.search('pdf$|txt$', file_name):
                 continue
@@ -80,6 +71,14 @@ class FTPClass:
                 self.ftp_client.retrbinary('{} {}'.format('RETR', file_name), filepath)
                 filepath.close()
         self.go_to_main_directory()
+
+    def start_iteration(self):
+        # skip until @archive
+        site_columns = self.ftp_client.mlsd()
+        next(site_columns)
+        next(site_columns)
+        next(site_columns)
+        return site_columns
 
     def go_to_main_directory(self):
         while self.ftp_client.pwd() != '/':
@@ -187,9 +186,6 @@ if __name__ == '__main__':
         name_dictionary[name] = 'ISDN Card'
     for name in {'du', 'dub'}:  # PCI card & extern & card
         name_dictionary[name] = 'USB Extensions'
-
-
-
 
     # create own Downloads directory
     FTPClass.maintain_directory_tree('firmware_files')
