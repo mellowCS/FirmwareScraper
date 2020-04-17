@@ -8,52 +8,80 @@ from ftplib import FTP, error_perm
 
 
 class FTPClass:
-    def __init__(self, ftp_address, things_to_skip, device_classes, thread_number, max_threads=10):
-        self.ftp_client = FTP(ftp_address)
-        self.things_to_skip = things_to_skip
-        self.device_classes_dict = device_classes
+    def __init__(self, address, thread_number, max_threads=10):
+        self.ftp_client = FTP(address)
         self.thread_number = thread_number
         self.max_threads = max_threads
         self.already_seen = ['fw', 'sw', 'rev', 'drv', 'code']
         self.json_file = list()
+        self.files_skipped = {
+            '@archive', 'anleitungen', 'D-Link_Assist_Anleitung.pdf', 'Hinweise Datenblaetter.txt',
+            'Images_High_Resolution', 'Images_Low_Resolution', 'index_info.txt', 'Legal - Information',
+            'Product_Images',
+            'Product_Information_Material', 'self - service', 'software', 'Supportsystem_Anleitung_Mass_RMA.pdf',
+            'Terms_and_Conditions', 'tmp', 'Warranty_Documents',
+            # deprecated systems
+            'ant24', 'ant70', 'dcf', 'de', 'dfw', 'dhd', 'dif', 'dm', 'dph', 'dvc', 'dvg', 'dvg', 'dta', 'dsn', 'dsm',
+            'dns', 'dvs', 'dfl', 'dbt', 'dev', 'dcm', 'dgl', 'dhs', 'di', 'dws', 'dfe', 'du'
+        }
+        self.device_classes_dict = {
+            'dba': 'Access Point', 'dap': 'Access Point',
+            'dis': 'Converter', 'dmc': 'Converter',
+            'dge': 'PCIe-Networkcard', 'dwa': 'PCIe-Networkcard', 'dxe': 'PCIe-Networkcard',
+            'dps': 'Redundant Power Supply',
+            'dsr': 'Router (Business)',
+            'dwr': 'Router (mobile)', 'dwm': 'Router (mobile)',
+            'dsl': 'Router (Modem)',
+            'covr': 'Router (Home)', 'dir': 'Router (Home)', 'dva': 'Router (Home)', 'go': 'Router (Home)',
+            'dsp': 'Smart Plug',
+            'dcs': 'Smart Wi-Fi Camera', 'dsh': 'Smart Wi-Fi Camera',
+            'des': 'Switch', 'dgs': 'Switch', 'dkvm': 'Switch', 'dqs': 'Switch', 'dxs': 'Switch',
+            'dem': 'Transceiver',
+            'dub': 'USB Extensions',
+            'dnr': 'Video Recorder',
+            'dwc': 'Wireless Controller',
+            'dwl': 'other'
+        }
+        # for dwl: ap = Access Point, e = enterprise, s = small to medium business, g = SuperG?!, m = MIMO,
+        # p = power over ethernet, plus = 802.11b+, ag = 802.11a and 802.11g, else PCIe, Adapter many more
+        # go-plk = powerline connection, go-dsl = modem-router
 
     def main(self):
         print(self.ftp_client.login())
         try:
             for (directory_name, _) in self.start_iteration():
-                if directory_name in self.things_to_skip:
+                if directory_name in self.files_skipped:
                     continue
-                # try:
-                self.ftp_client.cwd(directory_name)
-                self.get_subpage(directory_name)
-                self.ftp_client.cwd('/')
-                # except error_perm:
-                #    self.LOG(error_perm, directory_name)
-                #    continue
+                try:
+                    self.ftp_client.cwd(directory_name)
+                    self.get_subpage()
+                    self.ftp_client.cwd('/')
+                except error_perm as e:
+                    self.LOG(e)
+                    continue
         except KeyboardInterrupt:
             print('shutting down slowly')
         finally:
             self.ftp_client.close()
-            with open('dlink.json', mode='w') as f:
-                json.dump(self.json_file, f)
-                f.close()
+            with open('dlink.json', mode='w') as file:
+                json.dump(self.json_file, file)
+                file.close()
 
-    def get_subpage(self, this_directory_name):
+    def get_subpage(self):
 
-        for (new_directory_name, _) in self.start_iteration():
-            # try:
-            self.ftp_client.cwd(new_directory_name)
-            self.get_sub_subpage(new_directory_name)
-            self.ftp_client.cwd('..')
+        for (directory_name, _) in self.start_iteration():
+            try:
+                self.ftp_client.cwd(directory_name)
+                self.get_sub_subpage(directory_name)
+                self.ftp_client.cwd('..')
 
-            # except error_perm:
-            #    # trying to access file or permission denied
-            #    self.LOG(error_perm, new_directory_name)
-            #    continue
+            except error_perm as e:
+                # trying to access file or permission denied
+                self.LOG(e)
+                continue
 
     def get_sub_subpage(self, this_directory_name):
         for (new_directory, _) in self.start_iteration():
-            # archive, documentation, driver_software
             if 'driver_software' == new_directory:
                 self.ftp_client.cwd('driver_software')
                 self.download_directory(this_directory_name)
@@ -95,9 +123,9 @@ class FTPClass:
                      'file_urls': 'ftp://{}{}/{}'.format(self.ftp_client.host, self.ftp_client.pwd(), file_name)
                      })
 
-                with open('{}'.format(file_name), 'wb') as filepath:
-                    self.ftp_client.retrbinary('{} {}'.format('RETR', file_name), filepath.write)
-                    filepath.close()
+                with open('{}'.format(file_name), 'wb') as file:
+                    self.ftp_client.retrbinary('{} {}'.format('RETR', file_name), file.write)
+                    file.close()
             if '_sw_' in file_name:  # software
                 pass
             if '_rev' in file_name:  # revision?
@@ -106,7 +134,7 @@ class FTPClass:
                 pass
 
     def start_iteration(self):
-        # skip until @archive
+        # skip until first element
         site_columns = self.ftp_client.mlsd()
         next(site_columns)
         next(site_columns)
@@ -119,42 +147,7 @@ class FTPClass:
 
 
 if __name__ == '__main__':
-    ftp_address = 'ftp.dlink.de'
-
-    things_to_skip = {
-        '@archive', 'anleitungen', 'D-Link_Assist_Anleitung.pdf', 'Hinweise Datenblaetter.txt',
-        'Images_High_Resolution', 'Images_Low_Resolution', 'index_info.txt', 'Legal - Information', 'Product_Images',
-        'Product_Information_Material', 'self - service', 'software', 'Supportsystem_Anleitung_Mass_RMA.pdf',
-        'Terms_and_Conditions', 'tmp', 'Warranty_Documents',
-        # deprecated systems
-        'ant24', 'ant70', 'dcf', 'de', 'dfw', 'dhd', 'dif', 'dm', 'dph', 'dvc', 'dvg', 'dvg', 'dta', 'dsn', 'dsm',
-        'dns', 'dvs', 'dfl', 'dbt', 'dev', 'dcm', 'dgl', 'dhs', 'di', 'dws', 'dfe', 'du'
-    }
-
-    name_dictionary = {
-        'dsr': 'Router (Business)', 'dwc': 'Wireless Controller', 'dsl': 'Router (Modem)', 'dnr': 'Video Recorder',
-        'dps': 'Redundant Power Supply', 'dsp': 'Smart Plug', 'dub': 'USB Extensions', 'dem': 'Transceiver',
-        'dwl': 'Wireless LAN'
-    }
-    # for dwl: ap = Access Point, e = enterprise, s = small to medium business, g = SuperG?!, m = MIMO,
-    # p = power over ethernet, plus = 802.11b+, ag = 802.11a and 802.11g, else PCIe, Adapter many more
-
-    for name in {'covr', 'dir', 'dva', 'go'}:  # go-plk = powerline connection, go-dsl = modem-router
-        name_dictionary[name] = 'Router (Home)'
-    for name in {'dwr', 'dwm'}:
-        name_dictionary[name] = 'Router (mobile)'
-    for name in {'dba', 'dap', 'dwl'}:
-        name_dictionary[name] = 'Access Point'
-    for name in {'des', 'dgs', 'dkvm', 'dqs', 'dxs'}:
-        name_dictionary[name] = 'Switch'
-    for name in {'dge', 'dwa', 'dxe'}:
-        name_dictionary[name] = 'PCIe-Networkcard'
-    for name in {'dnc', 'cwm', 'ds', 'dv'}:
-        name_dictionary[name] = 'Software'
-    for name in {'dcs', 'dsh'}:
-        name_dictionary[name] = 'Smart Wi-Fi Camera'
-    for name in {'dis', 'dmc'}:
-        name_dictionary[name] = 'Converter'
+    dlink_ftp_address = 'ftp.dlink.de'
 
     downloads_directory = 'firmware_files'
     if is_directory(downloads_directory):
@@ -168,6 +161,6 @@ if __name__ == '__main__':
 
     max_thread = 1
     for number in range(max_thread):
-        working_class = FTPClass(ftp_address, things_to_skip, name_dictionary, thread_number=number + 1,
+        working_class = FTPClass(dlink_ftp_address, thread_number=number + 1,
                                  max_threads=max_thread)
         working_class.main()
