@@ -1,6 +1,5 @@
 import json
 import re
-
 from datetime import datetime
 from ftplib import FTP, error_perm
 
@@ -56,8 +55,8 @@ class FTPClass:
                     self.ftp_client.cwd(directory_name)
                     self.get_subpage()
                     self.ftp_client.cwd('/')
-                except error_perm as e:
-                    self.LOG(e)
+                except error_perm as error:
+                    self.logging(error)
                     continue
         except KeyboardInterrupt:
             print('shutting down slowly')
@@ -75,19 +74,19 @@ class FTPClass:
                 self.get_sub_subpage(directory_name)
                 self.ftp_client.cwd('..')
 
-            except error_perm as e:
+            except error_perm as error:
                 # trying to access file or permission denied
-                self.LOG(e)
+                self.logging(error)
                 continue
 
     def get_sub_subpage(self, this_directory_name):
         for (new_directory, _) in self.start_iteration():
-            if 'driver_software' == new_directory:
+            if new_directory == 'driver_software':
                 self.ftp_client.cwd('driver_software')
-                self.download_directory(this_directory_name)
+                self.download(this_directory_name)
                 self.ftp_client.cwd('..')
 
-    def download_directory(self, device_name):
+    def download(self, device_name):
 
         for (file_name, file_details) in self.start_iteration():
             if not re.search('zip$', file_name) or (
@@ -125,25 +124,25 @@ class FTPClass:
             if device_initials == 'dwl' and 'ap' in device_name:
                 device_class = 'Access Point'
 
-        except Exception as e:
+        except Exception as error:
             device_class = None
-            self.LOG(e)
+            self.logging(error)
         return device_class
 
     def extract_release_date(self, file_details):
         try:
             release_date = datetime.timestamp(datetime.strptime(file_details['modify'], "%Y%m%d%H%M%S"))
-        except Exception as e:
+        except Exception as error:
             release_date = None
-            self.LOG(e)
+            self.logging(error)
         return release_date
 
     def extract_firmware_version(self, file_name):
         try:
             firmware_version = file_name.split('_')[3]
-        except Exception as e:
+        except Exception as error:
             firmware_version = None
-            self.LOG(e)
+            self.logging(error)
         return firmware_version
 
     def start_iteration(self):
@@ -153,20 +152,18 @@ class FTPClass:
         next(site_columns)
         return site_columns
 
-    def LOG(self, error):
+    def logging(self, error):
         with open('0_logfile.txt', 'a') as logfile:
             logfile.write('Errormessage: {} \n Directory: {}\n'.format(error, self.ftp_client.pwd()))
 
 
 if __name__ == '__main__':
-    dlink_ftp_address = 'ftp.dlink.de'
-
-    downloads_directory = 'firmware_files'
-    if is_directory(downloads_directory):
-        chdir(downloads_directory)
+    DOWNLOADS = 'firmware_files'
+    if is_directory(DOWNLOADS):
+        chdir(DOWNLOADS)
     else:
-        mkdir(downloads_directory)
-        chdir(downloads_directory)
+        mkdir(DOWNLOADS)
+        chdir(DOWNLOADS)
 
-    working_class = FTPClass(dlink_ftp_address)
-    working_class.main()
+    THIS = FTPClass('ftp.dlink.de')
+    THIS.main()
