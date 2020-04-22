@@ -1,17 +1,17 @@
 import json
 import re
+
 from datetime import datetime
+from ftplib import FTP, error_perm
+
 from os import mkdir, chdir, stat
 from os.path import isdir as is_directory
 from os.path import isfile as is_file
-from ftplib import FTP, error_perm
 
 
 class FTPClass:
-    def __init__(self, address, thread_number, max_threads=10):
+    def __init__(self, address):
         self.ftp_client = FTP(address)
-        self.thread_number = thread_number
-        self.max_threads = max_threads
         self.already_seen = ['fw', 'sw', 'rev', 'drv', 'code']
         self.json_file = list()
         self.files_skipped = {
@@ -95,34 +95,7 @@ class FTPClass:
                 continue
 
             if '_fw_' in file_name:
-                try:
-                    device_initials = device_name.split('-')[0]
-                    device_class = self.device_classes_dict[device_initials]
-                    if device_initials == 'dwl' and 'ap' in device_name:
-                        device_class = 'Access Point'
-                except Exception as e:
-                    device_class = None
-                    self.LOG(e)
-                try:
-                    release_date = datetime.timestamp(datetime.strptime(file_details['modify'], "%Y%m%d%H%M%S"))
-                except Exception as e:
-                    release_date = None
-                    self.LOG(e)
-                try:
-                    firmware_version = file_name.split('_')[3]
-                except Exception as e:
-                    firmware_version = None
-                    self.LOG(e)
-
-                self.json_file.append(
-                    {'device_name': device_name,
-                     'vendor': 'D-Link',
-                     'firmware_version': firmware_version,
-                     'device_class': device_class,
-                     'release_date': release_date,
-                     'file_urls': 'ftp://{}{}/{}'.format(self.ftp_client.host, self.ftp_client.pwd(), file_name)
-                     })
-
+                self.append_device_information(device_name, file_details, file_name)
                 with open('{}'.format(file_name), 'wb') as file:
                     self.ftp_client.retrbinary('{} {}'.format('RETR', file_name), file.write)
                     file.close()
@@ -132,9 +105,48 @@ class FTPClass:
                 pass
             if '_drv_' in file_name:  # driver
                 pass
+            if 'code' in file_name:  # sourcecode
+                pass
+
+    def append_device_information(self, device_name, file_details, file_name):
+        self.json_file.append(
+            {'device_name': device_name,
+             'vendor': 'D-Link',
+             'firmware_version': self.extract_firmware_version(file_name),
+             'device_class': self.extract_device_class(device_name),
+             'release_date': self.extract_release_date(file_details),
+             'file_urls': 'ftp://{}{}/{}'.format(self.ftp_client.host, self.ftp_client.pwd(), file_name)
+             })
+
+    def extract_device_class(self, device_name):
+        try:
+            device_initials = device_name.split('-')[0]
+            device_class = self.device_classes_dict[device_initials]
+            if device_initials == 'dwl' and 'ap' in device_name:
+                device_class = 'Access Point'
+
+        except Exception as e:
+            device_class = None
+            self.LOG(e)
+        return device_class
+
+    def extract_release_date(self, file_details):
+        try:
+            release_date = datetime.timestamp(datetime.strptime(file_details['modify'], "%Y%m%d%H%M%S"))
+        except Exception as e:
+            release_date = None
+            self.LOG(e)
+        return release_date
+
+    def extract_firmware_version(self, file_name):
+        try:
+            firmware_version = file_name.split('_')[3]
+        except Exception as e:
+            firmware_version = None
+            self.LOG(e)
+        return firmware_version
 
     def start_iteration(self):
-        # skip until first element
         site_columns = self.ftp_client.mlsd()
         next(site_columns)
         next(site_columns)
@@ -142,7 +154,7 @@ class FTPClass:
         return site_columns
 
     def LOG(self, error):
-        with open('logfile.txt', 'a') as logfile:
+        with open('0_logfile.txt', 'a') as logfile:
             logfile.write('Errormessage: {} \n Directory: {}\n'.format(error, self.ftp_client.pwd()))
 
 
@@ -156,11 +168,5 @@ if __name__ == '__main__':
         mkdir(downloads_directory)
         chdir(downloads_directory)
 
-    # todo start threads here? maybe skip every 1,2,3,4 and so on OR do it with a queue
-    #  get element from queue, check for things to skip, get new one or connect
-
-    max_thread = 1
-    for number in range(max_thread):
-        working_class = FTPClass(dlink_ftp_address, thread_number=number + 1,
-                                 max_threads=max_thread)
-        working_class.main()
+    working_class = FTPClass(dlink_ftp_address)
+    working_class.main()
