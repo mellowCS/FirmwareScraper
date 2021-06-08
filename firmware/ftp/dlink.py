@@ -10,7 +10,7 @@ from os.path import isfile as is_file
 
 class FTPClass:
     def __init__(self, address):
-        self.ftp_client = FTP(address)
+        self.ftp_client = FTP(address, encoding='latin1')
         self.already_seen = ['fw', 'sw', 'rev', 'drv', 'code']
         self.json_file = list()
         self.files_skipped = {
