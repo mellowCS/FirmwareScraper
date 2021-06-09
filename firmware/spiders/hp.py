@@ -50,7 +50,10 @@ class HewlettPackardSpider(Spider):
     @staticmethod
     def prepare_meta_data(table_row):
         release_date = table_row.xpath('td')[3].xpath('div/text()').get()
-        release_date = datetime.strptime(release_date, '%Y%m%d').date().isoformat()
+        if len(release_date) == 4:
+            release_date = datetime.strptime(release_date, '%Y').date().isoformat()
+        else:
+            release_date = datetime.strptime(release_date, '%Y%m%d').date().isoformat()
         device_name = table_row.xpath('td')[0].xpath('div').get()
         device_name = search(r'</a> ?(.*?)</div>', device_name).group(1)
 
