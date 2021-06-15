@@ -123,9 +123,11 @@ ehthumbs_vista.db
 env.bak/
 env/
 fabric.properties
+firmware_files
 htmlcov/
 instance/
 ipython_config.py
+json
 local_settings.py
 modules.xml
 nosetests.xml
