@@ -29,8 +29,6 @@ class LinksysGPL(Spider):
     XPATH = {
         'table_rows': '//table/thead/tr',
         'row_columns': './/td',
-        'device_version': './/td[2]//text()',
-        'device_links': './/a/@href'
     }
 
     def parse(self, response: Response, **kwargs: {}) -> Generator[Request, None, None]:
