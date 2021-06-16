@@ -127,7 +127,7 @@ firmware_files
 htmlcov/
 instance/
 ipython_config.py
-json
+*.json
 local_settings.py
 modules.xml
 nosetests.xml
