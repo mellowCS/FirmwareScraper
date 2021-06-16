@@ -8,6 +8,7 @@ $RECYCLE.BIN/
 *.iml
 *.ipr
 *.iws
+*.json
 *.lnk
 *.log
 *.manifest
@@ -127,7 +128,6 @@ firmware_files
 htmlcov/
 instance/
 ipython_config.py
-*.json
 local_settings.py
 modules.xml
 nosetests.xml
