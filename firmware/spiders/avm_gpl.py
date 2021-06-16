@@ -38,7 +38,7 @@ class AVMGPL(Spider):
         folders, gpl_archives = AVMGPL.separate_folders_from_gpl_archives(links, infos)
 
         for archive in gpl_archives:
-            yield from self.parse_archive(archive)
+            yield from AVMGPL.parse_archive(archive)
 
         for folder in folders:
             yield Request(url=folder[0], callback=self.parse)
