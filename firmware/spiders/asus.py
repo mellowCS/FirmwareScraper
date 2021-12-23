@@ -1,4 +1,4 @@
-import re
+from re import findall
 from datetime import datetime
 
 from scrapy import Spider
