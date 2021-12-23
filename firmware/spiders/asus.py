@@ -38,9 +38,9 @@ class AsusSpider(Spider):
         url_redirects = set()
         header_scripts = set(response.xpath('//head//script/text()').getall())
         for header in header_scripts:
-           if not '"url"' in header:
-               continue
-           url_redirects.update(re.findall('"url": "(https://[\w\d\-\_\./]+)"', header))
+            if not '"url"' in header:
+                continue
+            url_redirects.update(re.findall('"url": "(https://[\w\d\-\_\./]+)"', header))
         for url_redirect in url_redirects:
             if url_redirect[-1] != '/':
                 continue
