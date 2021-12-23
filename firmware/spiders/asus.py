@@ -40,7 +40,7 @@ class AsusSpider(Spider):
         for header in header_scripts:
             if not '"url"' in header:
                 continue
-            url_redirects.update(re.findall('"url": "(https://[\w\d\-\_\./]+)"', header))
+            url_redirects.update(findall(r'"url": "(https://[\w\d\-\_\./]+)"', header))
         for url_redirect in url_redirects:
             if url_redirect[-1] != '/':
                 continue
