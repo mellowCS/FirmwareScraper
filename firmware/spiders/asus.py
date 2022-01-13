@@ -1,3 +1,4 @@
+from re import findall
 from datetime import datetime
 
 from scrapy import Spider
@@ -34,7 +35,13 @@ class AsusSpider(Spider):
     ]
 
     def parse(self, response):
-        for url_redirect in set(response.xpath('//div[contains(@class, "ProductCardNormal")]//a/@href').getall()):
+        url_redirects = set()
+        header_scripts = set(response.xpath('//head//script/text()').getall())
+        for header in header_scripts:
+            if not '"url"' in header:
+                continue
+            url_redirects.update(findall(r'"url": "(https://[\w\d\-\_\./]+)"', header))
+        for url_redirect in url_redirects:
             if url_redirect[-1] != '/':
                 continue
             response.follow(response.url)
