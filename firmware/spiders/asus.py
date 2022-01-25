@@ -1,7 +1,9 @@
+import re
 from datetime import datetime
+from random import uniform
+from time import sleep
 
-from scrapy import Spider
-from scrapy.exceptions import NotSupported
+from scrapy import Request, Spider
 from scrapy.loader import ItemLoader
 
 from firmware.items import FirmwareItem
@@ -33,20 +35,25 @@ class AsusSpider(Spider):
         base_url.format('WiFi-6')
     ]
 
-    def parse(self, response):
-        for url_redirect in set(response.xpath('//div[contains(@class, "ProductCardNormal")]//a/@href').getall()):
+    custom_settings = {
+        'DOWNLOAD_DELAY': 1.0,
+        'CONCURRENT_REQUESTS_PER_IP': 1,
+        'CONCURRENT_REQUESTS_PER_DOMAIN': 1,
+    }
+
+    def parse(self, response, **kwargs):
+        url_redirects = set()
+        header_scripts = set(response.xpath('//head//script/text()').getall())
+        for header in header_scripts:
+            if '"url"' not in header:
+                continue
+            url_redirects.update(re.findall(r'"url": "(https://[\w\d\-\_\./]+)"', header))
+        for url_redirect in url_redirects:
             if url_redirect[-1] != '/':
                 continue
-            response.follow(response.url)
-            yield response.follow(
-                url=f'{url_redirect}HelpDesk_BIOS/',
-                meta={'selenium': True,
-                      'dont_redirect': True,
-                      'handle_httpstatus_list': [302],
-                      'asus': True
-                      },
-                callback=self.parse_firmware
-            )
+            # selenium does not adhere to throttling settings, which is why we uniformly sleep to evade potential server-site throttling
+            sleep(uniform(0.5, 2.0))
+            yield Request(url=f'{url_redirect}HelpDesk_BIOS/', callback=self.parse_firmware, meta={'selenium': True})
 
     def parse_firmware(self, response):
         meta_data = self.prepare_meta_data(response)
