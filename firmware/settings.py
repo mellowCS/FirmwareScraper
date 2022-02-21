@@ -12,6 +12,10 @@ ROBOTSTXT_OBEY = True
 
 DOWNLOAD_TIMEOUT = 320
 
+DOWNLOAD_HANDLERS = {
+    'ftp': 'firmware.handlers.FTPHandler'
+}
+
 DOWNLOADER_MIDDLEWARES = {
     'firmware.middlewares.FirmwareDownloaderMiddleware': 543,
 }
@@ -24,4 +28,4 @@ ITEM_PIPELINES = {
 }
 
 # Enable to run with Selenium. Set to the driver executable path
-#SELENIUM_DRIVER_EXECUTABLE_PATH =
+SELENIUM_DRIVER_EXECUTABLE_PATH = '/usr/local/bin/geckodriver'
