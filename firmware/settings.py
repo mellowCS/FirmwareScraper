@@ -12,6 +12,11 @@ ROBOTSTXT_OBEY = True
 
 DOWNLOAD_TIMEOUT = 320
 
+LOG_LEVEL = 'DEBUG'
+
+FTP_USER = 'anonymous'
+FTP_PASSWORD = 'guest'
+
 DOWNLOAD_HANDLERS = {
     'ftp': 'firmware.handlers.FTPHandler'
 }
