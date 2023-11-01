@@ -1,3 +1,5 @@
-scrapy
-selenium
+scrapy~=2.5.1
+selenium~=4.1.0
 bs4
+parsel~=1.6.0
+Twisted

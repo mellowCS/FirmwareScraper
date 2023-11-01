@@ -1,5 +1,4 @@
 from datetime import datetime
-
 from typing import Generator
 
 from scrapy import Request, Spider
@@ -34,17 +33,18 @@ class TPLink(Spider):
         'product_name': '//h2[@class="product-name"]/text()',
         'product_support_link': '//a[contains(@class,"support")]/@href',
         'firmware_download_link': '//tr[@class="basic-info"][1]//a[contains(@class, download)]/@href',
-        'firmware_version': '//tr[@class="basic-info"][1]//a[contains(@class, download)]/text()[1]',
+        'firmware_version': '//span[@id="verison-hidden"]/text()',
         'firmware_release_date': '//tr[@class="detail-info"][1]/td[1]/span[2]/text()[1]',
     }
 
     def parse(self, response: Response, **kwargs: {}) -> Generator[Request, None, None]:
         for product_url in TPLink.extract_products_on_page(response=response):
-            yield Request(url=product_url, callback=self.parse_product_details)
+            yield Request(url=product_url, callback=TPLink.parse_product_details)
         for page_url in TPLink.extract_pages(response=response):
             yield Request(url=page_url, callback=self.parse)
 
-    def parse_product_details(self, product_page: Response, **kwargs: {}):
+    @staticmethod
+    def parse_product_details(product_page: Response):
         device_name = product_page.xpath(TPLink.XPATH['product_name']).extract()[0]
         device_class = TPLink.map_device_class(product_page.url)
 
@@ -52,11 +52,12 @@ class TPLink(Spider):
 
         return [Request(
             url=support_link,
-            callback=self.parse_firmware,
+            callback=TPLink.parse_firmware,
             cb_kwargs=dict(device_name=device_name, device_class=device_class),
         )]
 
-    def parse_firmware(self, support_page: Response, device_name: str, device_class: str):
+    @staticmethod
+    def parse_firmware(support_page: Response, device_name: str, device_class: str):
         file_url = TPLink.extract_firmware_download_link(support_page)
         firmware_version = TPLink.extract_firmware_version(support_page)
         firmware_release_date = TPLink.extract_firmware_release_date(support_page)
@@ -93,8 +94,8 @@ class TPLink(Spider):
 
     @staticmethod
     def extract_products_on_page(response: Response) -> Generator[str, None, None]:
-        for p in response.xpath(TPLink.XPATH['products_on_page']).extract():
-            yield response.urljoin(p)
+        for result in response.xpath(TPLink.XPATH['products_on_page']).extract():
+            yield response.urljoin(result)
 
     @staticmethod
     def extract_product_support_link(product_page: Response) -> str:
@@ -114,8 +115,8 @@ class TPLink(Spider):
 
     @staticmethod
     def extract_pages(response: Response) -> Generator[str, None, None]:
-        for p in response.xpath(TPLink.XPATH['product_pages']).extract():
-            yield response.urljoin(p)
+        for page in response.xpath(TPLink.XPATH['product_pages']).extract():
+            yield response.urljoin(page)
 
     @staticmethod
     def map_device_class(product_url: str) -> str:
